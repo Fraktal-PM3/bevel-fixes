@@ -1,0 +1,9 @@
+dependencies:
+- name: firefly-evmconnect
+  repository: file://../firefly-evmconnect
+  version: 0.8.1
+- name: firefly-fabconnect
+  repository: file://../firefly-fabconnect
+  version: 0.1.0
+digest: sha256:949bf539467693645f1b6c40d2258bc17434e8adb11c04d8dfbc2aaf271d3242
+generated: "2025-11-20T14:30:51.752537+01:00"

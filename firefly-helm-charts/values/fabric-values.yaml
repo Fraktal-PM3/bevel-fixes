@@ -1,0 +1,116 @@
+# Example values file for deploying FireFly with Hyperledger Fabric
+# This demonstrates how to configure FireFly with the FabConnect subchart
+
+config:
+  # Enable debug and admin APIs for development
+  debugEnabled: true
+  adminEnabled: true
+
+  # Organization configuration
+  organizationName: "org1"
+  organizationKey: "org1"  # Not used for Fabric (uses fabconnectSigner instead)
+
+  # Set Fabric as the default blockchain
+  defaultBlockchainType: "fabric"
+
+  # FabConnect configuration for FireFly core
+  # When fabconnect subchart is enabled, URL will be auto-discovered
+  # Otherwise, provide external FabConnect URL
+  fabconnectUrl: ""  # Leave empty for auto-discovery from subchart
+  fabconnectChannel: "firefly"
+  fabconnectChaincode: "firefly"
+  fabconnectSigner: "admin"  # Fabric identity name for signing transactions
+  fabconnectRetry: true
+
+  # Database configuration
+  postgresUrl: "postgres://postgres:password@postgresql:5432/firefly?sslmode=disable"
+  postgresAutomigrate: true
+
+  # IPFS configuration for shared storage
+  ipfsApiUrl: "http://ipfs:5001"
+  ipfsGatewayUrl: "http://ipfs:8080"
+
+  # Multiparty configuration
+  multipartyEnabled: true
+
+# Data exchange configuration for peer-to-peer communication
+dataexchange:
+  enabled: true
+
+  certificate:
+    enabled: true
+    issuerRef:
+      kind: ClusterIssuer
+      name: selfsigned-ca
+
+  tlsSecret:
+    enabled: false
+
+# FabConnect subchart configuration
+# Deploy FabConnect as part of the FireFly stack
+fabconnect:
+  enabled: true
+
+  # Fabric network connection details
+  fabric:
+    # Update these with your actual Fabric network endpoints
+    peerUrl: "grpcs://peer0.org1.example.com:7051"
+    ordererUrl: "grpcs://orderer.example.com:7050"
+    caUrl: "https://ca.org1.example.com:7054"
+
+    # Organization details
+    organizationName: "org1.example.com"
+    organizationMspId: "Org1MSP"
+
+    # Channel and chaincode
+    channelName: "firefly"
+    chaincodeName: "firefly"
+
+    # CA enrollment credentials
+    enrollId: "admin"
+    enrollSecret: "adminpw"
+
+  # MSP secret configuration
+  # Create this secret before deployment:
+  # kubectl create secret generic fabconnect-msp --from-file=path/to/msp
+  msp:
+    secretName: "fabconnect-msp"
+    mountPath: "/etc/firefly/organizations"
+
+  # Service configuration
+  service:
+    type: ClusterIP
+    port: 3000
+
+  # Resource allocation
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+  # Persistent storage for receipts and events
+  persistentVolume:
+    accessModes:
+      - ReadWriteOnce
+    size: 5Gi
+    storageClass: ""  # Use default storage class
+
+  # Health check configuration
+  healthcheck:
+    enabled: true
+    initialDelaySeconds: 15
+
+  # Logging
+  log:
+    level: "info"
+
+# Core FireFly pod configuration
+core:
+  enabled: true
+
+# Sandbox UI (optional)
+sandbox:
+  enabled: true

@@ -1,0 +1,270 @@
+# Copyright © 2024 Kaleido, Inc.
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://swww.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Default values for firefly-fabconnect
+# This is a YAML-formatted file.
+
+# -- Override the name of the chart
+nameOverride: ""
+
+# -- Override the full name of the release
+fullnameOverride: ""
+
+# Service configuration
+service:
+  # -- Service type (ClusterIP, NodePort, or LoadBalancer)
+  type: ClusterIP
+  # -- Service port for HTTP API
+  port: 3000
+  # -- NodePort for service (only used if type is NodePort)
+  nodePort: ""
+  # -- Annotations for the service
+  annotations: {}
+
+# Ingress configuration for external access
+ingress:
+  # -- Enable ingress
+  enabled: false
+  # -- Ingress class name
+  className: ""
+  # -- Ingress annotations
+  annotations: {}
+    # kubernetes.io/ingress.class: nginx
+    # kubernetes.io/tls-acme: "true"
+    # cert-manager.io/cluster-issuer: letsencrypt-prod
+  # -- Ingress hosts configuration
+  hosts:
+    - host: fabconnect.local
+      paths:
+        - path: /
+          pathType: Prefix
+  # -- TLS configuration for ingress
+  tls: []
+  #  - secretName: fabconnect-tls
+  #    hosts:
+  #      - fabconnect.local
+
+# Pod annotations
+podAnnotations: {}
+
+# Image pull secrets for private registries
+imagePullSecrets: []
+
+# Pod security context
+podSecurityContext:
+  fsGroup: 1001
+  runAsUser: 1001
+  runAsNonRoot: true
+
+# Container security context
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
+  runAsUser: 1001
+
+# Extra environment variables
+extraEnv: []
+# - name: DEBUG
+#   value: "true"
+
+# Init containers for setup tasks
+initContainers: ""
+
+# Extra containers to run alongside fabconnect
+extraContainers: ""
+
+# Extra volume claim templates
+extraVolumeClaimTemplates: ""
+
+# Resource limits and requests
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+# Node selector for pod assignment
+nodeSelector: {}
+
+# Tolerations for pod assignment
+tolerations: []
+
+# Affinity rules for pod assignment
+affinity: {}
+
+# Persistent volume configuration for receipts and events
+persistentVolume:
+  # -- Access modes for persistent volume
+  accessModes:
+    - ReadWriteOnce
+  # -- Annotations for persistent volume claim
+  annotations: {}
+  # -- Size of persistent volume
+  size: 5Gi
+  # -- Storage class name (leave empty for default)
+  storageClass: ""
+
+# Container image configuration
+image:
+  # -- FabConnect container image repository
+  repository: ghcr.io/hyperledger/firefly-fabconnect
+  # -- Image pull policy
+  pullPolicy: IfNotPresent
+  # -- Image tag (overrides appVersion from Chart.yaml)
+  tag: "v1.2.2"
+
+# Hyperledger Fabric network configuration
+fabric:
+  # -- Fabric peer URL (gRPC endpoint)
+  peerUrl: "grpcs://peer0.org1.example.com:7051"
+  # -- Fabric orderer URL (gRPC endpoint)
+  ordererUrl: "grpcs://orderer.example.com:7050"
+  # -- Fabric CA URL (HTTP/HTTPS endpoint)
+  caUrl: "https://ca.org1.example.com:7054"
+  # -- Organization name (FQDN)
+  organizationName: "org1.example.com"
+  # -- Organization MSP ID
+  organizationMspId: "Org1MSP"
+  # -- Fabric channel name
+  channelName: "default-channel"
+  # -- Chaincode name to interact with
+  chaincodeName: "firefly"
+  # -- Enrollment ID for CA registration
+  enrollId: "admin"
+  # -- Enrollment secret for CA registration
+  enrollSecret: "adminpw"
+
+# MSP (Membership Service Provider) configuration
+msp:
+  # -- Name of Kubernetes secret containing MSP directory structure
+  # The secret should contain the complete MSP hierarchy:
+  #   - admincerts/
+  #   - cacerts/
+  #   - keystore/
+  #   - signcerts/
+  #   - tlscacerts/
+  secretName: "fabconnect-msp"
+  # -- Mount path for MSP files
+  mountPath: "/etc/firefly/organizations"
+
+# Connection Profile (CCP) configuration
+# This can be provided as a complete YAML string or auto-generated from fabric.* values
+connectionProfile:
+  # -- Use auto-generated connection profile based on fabric.* values
+  # Set to false to provide a custom profile via customProfile
+  autoGenerate: true
+  # -- Custom connection profile YAML (only used if autoGenerate is false)
+  # Must be a complete Fabric connection profile in YAML format
+  customProfile: ""
+
+# FabConnect application configuration
+# See: https://github.com/hyperledger/firefly-fabconnect
+config:
+  # -- Maximum number of inflight transactions
+  maxInFlight: 10
+  # -- Maximum time to wait for transaction (seconds)
+  maxTXWaitTime: 60
+  # -- Number of concurrent send operations
+  sendConcurrency: 25
+  # -- HTTP port for REST API (should match service.port)
+  port: 3000
+  # -- Allow webhooks to private IP addresses
+  webhooksAllowPrivateIPs: true
+
+  # Receipts database configuration
+  receipts:
+    # -- Maximum documents to store
+    maxDocs: 1000
+    # -- Query limit for receipts
+    queryLimit: 100
+    # -- Initial delay for retry (seconds)
+    retryInitialDelay: 5
+    # -- Retry timeout (seconds)
+    retryTimeout: 30
+    # LevelDB configuration for receipts
+    leveldb:
+      # -- Path for receipts database
+      path: "/fabconnect/receipts"
+
+  # Events database configuration
+  events:
+    # -- Allow webhooks to private IPs
+    webhooksAllowPrivateIPs: true
+    # LevelDB configuration for events
+    leveldb:
+      # -- Path for events database
+      path: "/fabconnect/events"
+
+  # RPC configuration
+  rpc:
+    # -- Use Fabric SDK for RPC (uses connection profile)
+    useFabricSDK: true
+    # -- Connection profile path (managed by chart)
+    configPath: "/fabconnect/ccp.yaml"
+
+  # Custom configuration override
+  # Use this to provide complete custom configuration
+  # When set, this overrides all other config.* values
+  templateOverride: ""
+
+# Healthcheck/Liveness probe configuration
+healthcheck:
+  # -- Enable health checks
+  enabled: true
+  # -- Health check endpoint path
+  path: "/status"
+  # -- Initial delay before first probe (seconds)
+  initialDelaySeconds: 15
+  # -- Probe interval (seconds)
+  periodSeconds: 10
+  # -- Probe timeout (seconds)
+  timeoutSeconds: 5
+  # -- Success threshold
+  successThreshold: 1
+  # -- Failure threshold before restart
+  failureThreshold: 3
+
+# Readiness probe configuration
+readinessProbe:
+  # -- Enable readiness checks
+  enabled: true
+  # -- Readiness check endpoint path
+  path: "/status"
+  # -- Initial delay before first probe (seconds)
+  initialDelaySeconds: 10
+  # -- Probe interval (seconds)
+  periodSeconds: 5
+  # -- Probe timeout (seconds)
+  timeoutSeconds: 3
+  # -- Success threshold
+  successThreshold: 1
+  # -- Failure threshold
+  failureThreshold: 3
+
+# Logging configuration
+log:
+  # -- Log level (error, warn, info, debug, trace)
+  level: "info"
+  # -- Enable JSON formatted logs
+  jsonEnabled: false
+  # -- Enable debug mode for Fabric SDK
+  fabricSDKDebug: false

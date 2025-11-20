@@ -1,0 +1,63 @@
+config:
+  debugEnabled: true
+  adminEnabled: true
+  preInit: true
+
+  organizationName: "firefly-os"
+  organizationKey: "firefly-os"
+
+  # Use fabconnect deployed as subchart
+  defaultBlockchainType: "fabric"
+  fabconnectUrl: ""  # Auto-discovered from subchart
+  fabconnectChannel: "firefly"
+  fabconnectChaincode: "firefly"
+  fabconnectSigner: "admin"
+
+  postgresUrl: "postgres://postgres:firef1y@postgresql.default.svc:5432?sslmode=disable"
+  postgresAutomigrate: true
+
+  ipfsApiUrl: "http://ipfs.firefly-os:5001"
+  ipfsGatewayUrl: "http://ipfs.firefly-os:8080"
+
+dataexchange:
+  certificate:
+    enabled: true
+    issuerRef:
+      kind: ClusterIssuer
+      name: selfsigned-ca
+
+  tlsSecret:
+    enabled: false
+
+# Enable and configure FabConnect subchart
+fabconnect:
+  enabled: true
+
+  fabric:
+    peerUrl: "grpcs://peer0.org1.example.com:7051"
+    ordererUrl: "grpcs://orderer.example.com:7050"
+    caUrl: "https://ca.org1.example.com:7054"
+    organizationName: "org1.example.com"
+    organizationMspId: "Org1MSP"
+    channelName: "firefly"
+    chaincodeName: "firefly"
+    enrollId: "admin"
+    enrollSecret: "adminpw"
+
+  msp:
+    secretName: "fabconnect-msp"
+
+  service:
+    type: ClusterIP
+    port: 3000
+
+  resources:
+    limits:
+      cpu: 200m
+      memory: 256Mi
+    requests:
+      cpu: 50m
+      memory: 64Mi
+
+  persistentVolume:
+    size: 2Gi

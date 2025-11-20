@@ -1,0 +1,20 @@
+---
+fabricFlags:
+  removeGenesisOnDelete: false
+
+cluster:
+  provider: local # choose from: local | aws | azure
+  cloudNativeServices: false
+
+# Fabric configuration for FabConnect
+fabricConfig:
+  network:
+    name: fabric-network
+    channel: mychannel
+    chaincode: firefly
+  orderer:
+    type: etcdraft
+    batchTimeout: 5s
+    batchSize: 10
+  peer:
+    count: 1
