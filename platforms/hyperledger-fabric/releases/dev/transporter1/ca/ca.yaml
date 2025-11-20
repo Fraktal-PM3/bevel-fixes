@@ -38,7 +38,7 @@ spec:
         externalIp: 46.62.234.169
 
     storage:
-      enabled: False
+      enabled: True
       size: 512Mi
       reclaimPolicy: "Delete"
       volumeBindingMode: Immediate
