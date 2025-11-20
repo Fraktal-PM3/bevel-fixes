@@ -21,24 +21,24 @@ lint:
 	./hack/enforce-chart-conventions.sh
 
 fabric:
-	kubectl --namespace default apply -f  ./values/monitoring/
+	minikube kubectl -- --namespace default apply -f  ./values/monitoring/
 	mkdir -p fabric
 	# Deploy FabConnect instead of Besu
 	helm upgrade --install fabconnect ./fabconnect --namespace default --create-namespace
-	kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=fabconnect --timeout=600s
+	minikube kubectl -- wait --for=condition=ready pod -l app.kubernetes.io/name=fabconnect --timeout=600s
 
 deps:
-	kubectl create ns cert-manager || true
-	kubectl apply -f https://github.com/jetstack/cert-manager/releases/download/v1.4.0/cert-manager.crds.yaml
+	minikube kubectl -- create ns cert-manager || true
+	minikube kubectl -- apply -f https://github.com/jetstack/cert-manager/releases/download/v1.4.0/cert-manager.crds.yaml
 	helm repo add jetstack https://charts.jetstack.io || true
 	helm upgrade --install --skip-crds -n cert-manager cert-manager jetstack/cert-manager --wait
-	kubectl apply -n cert-manager -f manifests/tls-issuers.yaml
+	minikube kubectl -- apply -n cert-manager -f manifests/tls-issuers.yaml
 	helm repo add prometheus-community https://prometheus-community.github.io/helm-charts || true
 	helm upgrade --install --set kubeStateMetrics.enabled=false --set nodeExporter.enabled=false --set grafana.enabled=false kube-prometheus prometheus-community/kube-prometheus-stack
 	helm repo add bitnami https://raw.githubusercontent.com/bitnami/charts/archive-full-index/bitnami || true
 	helm upgrade --install --set global.postgresql.auth.postgresPassword=firef1y --set extraEnv[0].name=POSTGRES_DATABASE --set extraEnv[0].value=firefly postgresql bitnami/postgresql --version 14.3.0
-	kubectl create secret generic custom-psql-config --dry-run --from-literal="url=postgres://postgres:firef1y@postgresql.default.svc:5432/postgres?sslmode=disable" -o json | kubectl apply -f -
-	kubectl apply -n default -f manifests/mtls-cert.yaml
+	minikube kubectl -- create secret generic custom-psql-config --dry-run --from-literal="url=postgres://postgres:firef1y@postgresql.default.svc:5432/postgres?sslmode=disable" -o json | minikube kubectl -- apply -f -
+	minikube kubectl -- apply -n default -f manifests/mtls-cert.yaml
 	helm upgrade --install ipfs ./charts/ipfs -f ./charts/ipfs/values.yaml
 
 starter: charts/firefly/local-values.yaml

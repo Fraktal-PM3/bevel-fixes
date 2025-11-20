@@ -35,19 +35,19 @@ echo "✓ Helm release uninstalled"
 if [ "$DELETE_PVC" = "true" ]; then
     echo ""
     echo "Deleting persistent volume claims..."
-    kubectl delete pvc -n $NAMESPACE -l app.kubernetes.io/instance=$RELEASE_NAME || true
+    minikube kubectl -- delete pvc -n $NAMESPACE -l app.kubernetes.io/instance=$RELEASE_NAME || true
     echo "✓ PVCs deleted"
 else
     echo ""
     echo "ℹ Persistent volume claims are retained."
-    echo "  To delete them, run: kubectl delete pvc -n $NAMESPACE -l app.kubernetes.io/instance=$RELEASE_NAME"
+    echo "  To delete them, run: minikube kubectl -- delete pvc -n $NAMESPACE -l app.kubernetes.io/instance=$RELEASE_NAME"
     echo "  Or set DELETE_PVC=true when running this script"
 fi
 
 # Clean up any leftover resources
 echo ""
 echo "Checking for leftover resources..."
-LEFTOVER_PODS=$(kubectl get pods -n $NAMESPACE -l app.kubernetes.io/instance=$RELEASE_NAME --no-headers 2>/dev/null | wc -l)
+LEFTOVER_PODS=$(minikube kubectl -- get pods -n $NAMESPACE -l app.kubernetes.io/instance=$RELEASE_NAME --no-headers 2>/dev/null | wc -l)
 if [ $LEFTOVER_PODS -gt 0 ]; then
     echo "⚠ Warning: $LEFTOVER_PODS pod(s) still exist. They should terminate shortly."
 fi

@@ -11,7 +11,7 @@ ABI=$(jq -r -c .abi ./Firefly.json)
 BYTECODE=$(jq -r -c .bytecode ./Firefly.json)
 
 # Set up a port forward to the service in the background. We will kill this before the end of the script
-kubectl port-forward svc/firefly $FORWARDED_PORT:http &
+minikube kubectl -- port-forward svc/firefly $FORWARDED_PORT:http &
 PORTFORWARD_PID=$!
 sleep 1
 
@@ -42,10 +42,10 @@ helm upgrade --install firefly ../charts/firefly -f ../charts/firefly/local-kind
 
 
 # Wait here until FF comes back up after the config change
-kubectl wait --for=condition=ready pod/firefly-0
+minikube kubectl -- wait --for=condition=ready pod/firefly-0
 
 # Set up a port forward to the service in the background. We will kill this before the end of the script
-kubectl port-forward svc/firefly $FORWARDED_PORT:http &
+minikube kubectl -- port-forward svc/firefly $FORWARDED_PORT:http &
 PORTFORWARD_PID=$!
 sleep 1
 

@@ -91,7 +91,7 @@ echo "Vault Address: $VAULT_ADDR"
 echo "=========================================="
 
 # Check for required tools
-for tool in vault kubectl jq; do
+for tool in vault minikube jq; do
     if ! command -v $tool &> /dev/null; then
         log_error "$tool is not installed. Please install it first."
         exit 1
@@ -204,28 +204,28 @@ log_info "MSP files prepared in temporary directory"
 
 # Check Kubernetes connection
 log_info "Checking Kubernetes connection..."
-if ! kubectl cluster-info &> /dev/null; then
+if ! minikube kubectl -- cluster-info &> /dev/null; then
     log_error "Cannot connect to Kubernetes cluster"
     exit 1
 fi
 log_info "Connected to Kubernetes"
 
 # Create namespace if it doesn't exist
-kubectl create namespace "$NAMESPACE" --dry-run=client -o yaml | kubectl apply -f - &> /dev/null
+minikube kubectl -- create namespace "$NAMESPACE" --dry-run=client -o yaml | minikube kubectl -- apply -f - &> /dev/null
 log_info "Namespace '$NAMESPACE' ready"
 
 # Delete existing secret if it exists
-if kubectl get secret "$SECRET_NAME" -n "$NAMESPACE" &> /dev/null; then
+if minikube kubectl -- get secret "$SECRET_NAME" -n "$NAMESPACE" &> /dev/null; then
     log_warn "Secret '$SECRET_NAME' already exists, deleting..."
-    kubectl delete secret "$SECRET_NAME" -n "$NAMESPACE"
+    minikube kubectl -- delete secret "$SECRET_NAME" -n "$NAMESPACE"
 fi
 
 # Create Kubernetes secret from MSP directory
 log_info "Creating Kubernetes secret '$SECRET_NAME'..."
-kubectl create secret generic "$SECRET_NAME" \
+minikube kubectl -- create secret generic "$SECRET_NAME" \
     --from-file="$MSP_DIR" \
     --namespace "$NAMESPACE" \
-    --dry-run=client -o yaml | kubectl apply -f -
+    --dry-run=client -o yaml | minikube kubectl -- apply -f -
 
 log_info "Secret created successfully"
 
@@ -234,11 +234,11 @@ echo ""
 echo "=========================================="
 echo "Secret Details"
 echo "=========================================="
-kubectl get secret "$SECRET_NAME" -n "$NAMESPACE" -o yaml | grep -E "^(apiVersion|kind|metadata:|  name:|  namespace:)" | grep -v "creationTimestamp\|resourceVersion\|uid"
+minikube kubectl -- get secret "$SECRET_NAME" -n "$NAMESPACE" -o yaml | grep -E "^(apiVersion|kind|metadata:|  name:|  namespace:)" | grep -v "creationTimestamp\|resourceVersion\|uid"
 
 echo ""
 echo "Secret data keys:"
-kubectl get secret "$SECRET_NAME" -n "$NAMESPACE" -o json | jq -r '.data | keys[]'
+minikube kubectl -- get secret "$SECRET_NAME" -n "$NAMESPACE" -o json | jq -r '.data | keys[]'
 
 echo ""
 echo "=========================================="

@@ -21,7 +21,7 @@ echo "=========================================="
 
 # Check if kubectl is configured
 echo "Checking Kubernetes connection..."
-if ! kubectl cluster-info &> /dev/null; then
+if ! minikube kubectl -- cluster-info &> /dev/null; then
     echo "Error: Cannot connect to Kubernetes cluster. Please check your KUBECONFIG."
     exit 1
 fi
@@ -30,14 +30,14 @@ echo "✓ Connected to Kubernetes cluster"
 # Create namespace if it doesn't exist
 echo ""
 echo "Creating namespace $NAMESPACE if it doesn't exist..."
-kubectl create namespace $NAMESPACE --dry-run=client -o yaml | kubectl apply -f -
+minikube kubectl -- create namespace $NAMESPACE --dry-run=client -o yaml | minikube kubectl -- apply -f -
 echo "✓ Namespace ready"
 
 # Install cert-manager for TLS certificates
 echo ""
 echo "Installing cert-manager..."
-kubectl create namespace cert-manager --dry-run=client -o yaml | kubectl apply -f - || true
-kubectl apply -f https://github.com/jetstack/cert-manager/releases/download/v1.4.0/cert-manager.crds.yaml
+minikube kubectl -- create namespace cert-manager --dry-run=client -o yaml | minikube kubectl -- apply -f - || true
+minikube kubectl -- apply -f https://github.com/jetstack/cert-manager/releases/download/v1.4.0/cert-manager.crds.yaml
 helm repo add jetstack https://charts.jetstack.io --force-update || true
 helm upgrade --install --skip-crds -n cert-manager cert-manager jetstack/cert-manager --wait
 echo "✓ cert-manager installed"
@@ -45,7 +45,7 @@ echo "✓ cert-manager installed"
 # Apply TLS issuers
 echo ""
 echo "Applying TLS issuers..."
-kubectl apply -n cert-manager -f manifests/tls-issuers.yaml || echo "Warning: Could not apply TLS issuers"
+minikube kubectl -- apply -n cert-manager -f manifests/tls-issuers.yaml || echo "Warning: Could not apply TLS issuers"
 
 # Update Helm dependencies
 echo ""
@@ -68,7 +68,7 @@ echo "✓ FireFly deployed"
 # Wait for pods to be ready
 echo ""
 echo "Waiting for FireFly pods to be ready..."
-kubectl wait --for=condition=ready pod \
+minikube kubectl -- wait --for=condition=ready pod \
     -l app.kubernetes.io/instance=$RELEASE_NAME \
     -n $NAMESPACE \
     --timeout=600s || echo "Warning: Some pods may not be ready yet"
@@ -78,9 +78,9 @@ echo ""
 echo "=========================================="
 echo "Deployment Status"
 echo "=========================================="
-kubectl get pods -n $NAMESPACE -l app.kubernetes.io/instance=$RELEASE_NAME
+minikube kubectl -- get pods -n $NAMESPACE -l app.kubernetes.io/instance=$RELEASE_NAME
 echo ""
-kubectl get svc -n $NAMESPACE -l app.kubernetes.io/instance=$RELEASE_NAME
+minikube kubectl -- get svc -n $NAMESPACE -l app.kubernetes.io/instance=$RELEASE_NAME
 
 echo ""
 echo "=========================================="
@@ -88,11 +88,11 @@ echo "✓ FireFly deployment complete!"
 echo "=========================================="
 echo ""
 echo "To access FireFly:"
-echo "  kubectl port-forward -n $NAMESPACE svc/$RELEASE_NAME 5000:5000"
+echo "  minikube kubectl -- port-forward -n $NAMESPACE svc/$RELEASE_NAME 5000:5000"
 echo ""
 echo "To access the Sandbox UI:"
-echo "  kubectl port-forward -n $NAMESPACE svc/$RELEASE_NAME-sandbox 3001:3001"
+echo "  minikube kubectl -- port-forward -n $NAMESPACE svc/$RELEASE_NAME-sandbox 3001:3001"
 echo ""
 echo "To view logs:"
-echo "  kubectl logs -n $NAMESPACE -l app.kubernetes.io/component=core -f"
+echo "  minikube kubectl -- logs -n $NAMESPACE -l app.kubernetes.io/component=core -f"
 echo ""
