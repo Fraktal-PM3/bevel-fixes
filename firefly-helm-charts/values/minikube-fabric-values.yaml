@@ -1,0 +1,85 @@
+# Minimal FireFly values file for Minikube with Fabric
+# This configuration deploys FireFly with:
+# - Built-in PostgreSQL
+# - Built-in IPFS
+# - FabConnect for Hyperledger Fabric
+
+config:
+  # Enable debug for easier troubleshooting
+  debugEnabled: true
+  adminEnabled: true
+
+  # Organization configuration
+  organizationName: "org1"
+
+  # Fabric blockchain configuration
+  defaultBlockchainType: "fabric"
+  fabconnectChannel: "firefly"
+  fabconnectChaincode: "firefly"
+  fabconnectSigner: "admin"
+
+  # Database auto-migration for development
+  postgresAutomigrate: true
+
+  # Enable multiparty mode
+  multipartyEnabled: true
+
+# Data exchange for peer-to-peer communication
+dataexchange:
+  enabled: true
+  certificate:
+    enabled: true
+    issuerRef:
+      kind: ClusterIssuer
+      name: selfsigned-ca
+
+# FabConnect - Update with your Fabric network details
+fabconnect:
+  enabled: true
+
+  fabric:
+    # REQUIRED: Update these with your actual Fabric network endpoints
+    peerUrl: "grpcs://peer0.org1.example.com:7051"
+    ordererUrl: "grpcs://orderer.example.com:7050"
+    caUrl: "https://ca.org1.example.com:7054"
+
+    organizationName: "org1.example.com"
+    organizationMspId: "Org1MSP"
+
+    channelName: "firefly"
+    chaincodeName: "firefly"
+
+    # CA credentials for enrollment
+    enrollId: "admin"
+    enrollSecret: "adminpw"
+
+  # MSP secret (create before deployment)
+  msp:
+    secretName: "fabconnect-msp"
+    mountPath: "/etc/firefly/organizations"
+
+# Built-in PostgreSQL (enabled by default)
+postgres:
+  enabled: true
+  username: postgres
+  password: firef1y
+  database: firefly
+
+# Built-in IPFS (enabled by default)
+ipfs:
+  enabled: true
+  profile: server
+
+# Sandbox UI
+sandbox:
+  enabled: true
+
+# Reduce resources for Minikube
+core:
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 256Mi

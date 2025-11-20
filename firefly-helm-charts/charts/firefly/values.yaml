@@ -721,3 +721,128 @@ fabconnect:
   persistentVolume:
     size: 5Gi
     storageClass: ""
+
+# PostgreSQL database configuration
+# When enabled, deploys a PostgreSQL instance for FireFly to use
+postgres:
+  enabled: true
+
+  image:
+    repository: postgres
+    pullPolicy: IfNotPresent
+    tag: "14-alpine"
+
+  imagePullSecrets: []
+
+  podAnnotations: {}
+
+  podSecurityContext:
+    fsGroup: 999
+    runAsUser: 999
+    runAsNonRoot: true
+
+  securityContext: {}
+    # capabilities:
+    #   drop:
+    #   - ALL
+    # readOnlyRootFilesystem: true
+
+  # PostgreSQL database credentials
+  username: postgres
+  password: firef1y
+  database: firefly
+
+  extraEnv: []
+    # - name: POSTGRES_INITDB_ARGS
+    #   value: "--encoding=UTF8"
+
+  service:
+    type: ClusterIP
+    port: 5432
+
+  persistentVolume:
+    accessModes:
+      - ReadWriteOnce
+    annotations: {}
+    size: 10Gi
+    storageClass: ""
+
+  resources: {}
+    # limits:
+    #   cpu: 500m
+    #   memory: 512Mi
+    # requests:
+    #   cpu: 100m
+    #   memory: 256Mi
+
+  nodeSelector: {}
+
+  tolerations: []
+
+  affinity: {}
+
+# IPFS configuration
+# When enabled, deploys an IPFS node for shared storage
+ipfs:
+  enabled: true
+
+  image:
+    repository: ipfs/kubo
+    pullPolicy: IfNotPresent
+    tag: "v0.24.0"
+
+  imagePullSecrets: []
+
+  podAnnotations: {}
+
+  podSecurityContext:
+    fsGroup: 1000
+    runAsUser: 1000
+    runAsNonRoot: true
+
+  securityContext: {}
+    # capabilities:
+    #   drop:
+    #   - ALL
+
+  # IPFS initialization profile (server, lowpower, etc.)
+  profile: server
+
+  # Optional: Swarm key for private IPFS network
+  # Format: /key/swarm/psk/1.0.0/\n/base16/\n<64 character hex key>
+  swarmKey: ""
+
+  # API authentication credentials
+  apiUsername: ""
+  apiPassword: ""
+
+  extraEnv: []
+    # - name: IPFS_LOGGING
+    #   value: debug
+
+  service:
+    type: ClusterIP
+    apiPort: 5001
+    gatewayPort: 8080
+    swarmPort: 4001
+
+  persistentVolume:
+    accessModes:
+      - ReadWriteOnce
+    annotations: {}
+    size: 10Gi
+    storageClass: ""
+
+  resources: {}
+    # limits:
+    #   cpu: 1000m
+    #   memory: 1Gi
+    # requests:
+    #   cpu: 250m
+    #   memory: 512Mi
+
+  nodeSelector: {}
+
+  tolerations: []
+
+  affinity: {}

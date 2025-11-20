@@ -22,13 +22,13 @@ config:
   fabconnectSigner: "admin"  # Fabric identity name for signing transactions
   fabconnectRetry: true
 
-  # Database configuration
-  postgresUrl: "postgres://postgres:password@postgresql:5432/firefly?sslmode=disable"
+  # Database configuration (auto-configured with built-in PostgreSQL)
+  # postgresUrl: ""  # Leave empty to use built-in PostgreSQL
   postgresAutomigrate: true
 
-  # IPFS configuration for shared storage
-  ipfsApiUrl: "http://ipfs:5001"
-  ipfsGatewayUrl: "http://ipfs:8080"
+  # IPFS configuration (auto-configured with built-in IPFS)
+  # ipfsApiUrl: ""  # Leave empty to use built-in IPFS
+  # ipfsGatewayUrl: ""
 
   # Multiparty configuration
   multipartyEnabled: true
@@ -114,3 +114,19 @@ core:
 # Sandbox UI (optional)
 sandbox:
   enabled: true
+
+# PostgreSQL is now deployed automatically by default
+# To disable: postgres.enabled: false
+postgres:
+  enabled: true
+  # Customize if needed:
+  # username: postgres
+  # password: firef1y
+  # database: firefly
+
+# IPFS is now deployed automatically by default
+# To disable: ipfs.enabled: false
+ipfs:
+  enabled: true
+  # Customize if needed:
+  # profile: server

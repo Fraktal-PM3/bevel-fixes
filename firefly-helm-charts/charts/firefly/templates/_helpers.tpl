@@ -133,6 +133,16 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 app.kubernetes.io/part-of: {{ .Chart.Name }}
 {{- end }}
 
+{{- define "firefly.postgresLabels" -}}
+helm.sh/chart: {{ include "firefly.chart" . }}
+{{ include "firefly.postgresSelectorLabels" . }}
+{{- if .Chart.AppVersion }}
+app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
+{{- end }}
+app.kubernetes.io/managed-by: {{ .Release.Service }}
+app.kubernetes.io/part-of: {{ .Chart.Name }}
+{{- end }}
+
 {{/*
 Selector labels
 */}}
@@ -176,6 +186,12 @@ app.kubernetes.io/component: ethconnect
 app.kubernetes.io/name: {{ include "firefly.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 app.kubernetes.io/component: sandbox
+{{- end }}
+
+{{- define "firefly.postgresSelectorLabels" -}}
+app.kubernetes.io/name: {{ include "firefly.name" . }}
+app.kubernetes.io/instance: {{ .Release.Name }}
+app.kubernetes.io/component: postgres
 {{- end }}
 
 {{- define "firefly.ethconnectRegisterContractsJobName" -}}
@@ -330,11 +346,15 @@ plugins:
     {{- tpl .Values.config.databaseOverride . | nindent 4 }}
   {{- else }}
   database:
-  {{- if .Values.config.postgresUrl }}
+  {{- if or .Values.config.postgresUrl .Values.postgres.enabled }}
     - name: database0
       type: postgres
       postgres:
+        {{- if .Values.postgres.enabled }}
+        url: postgres://{{ .Values.postgres.username }}:{{ .Values.postgres.password }}@{{ include "firefly.fullname" . }}-postgres.{{ .Release.Namespace }}.svc:{{ .Values.postgres.service.port }}/{{ .Values.postgres.database }}?sslmode=disable
+        {{- else }}
         url: {{ tpl .Values.config.postgresUrl . }}
+        {{- end }}
         migrations:
           auto: {{ .Values.config.postgresAutomigrate }}
   {{- end }}
@@ -347,23 +367,41 @@ plugins:
     {{- tpl .Values.config.sharedstorageOverride . | nindent 4 }}
   {{- else }}
   sharedstorage:
-  {{- if and .Values.config.ipfsApiUrl .Values.config.ipfsGatewayUrl }}
+  {{- if or (and .Values.config.ipfsApiUrl .Values.config.ipfsGatewayUrl) .Values.ipfs.enabled }}
     - name: sharedstorage0
       type: ipfs
       ipfs:
         api:
+          {{- if .Values.ipfs.enabled }}
+          url: http://{{ include "firefly.fullname" . }}-ipfs.{{ .Release.Namespace }}.svc:{{ .Values.ipfs.service.apiPort }}
+          {{- else }}
           url: {{ tpl .Values.config.ipfsApiUrl . }}
-          {{- if and .Values.config.ipfsApiUsername .Values.config.ipfsApiPassword }}
+          {{- end }}
+          {{- if or (and .Values.config.ipfsApiUsername .Values.config.ipfsApiPassword) (and .Values.ipfs.enabled .Values.ipfs.apiUsername .Values.ipfs.apiPassword) }}
           auth:
-            username: {{ .Values.config.ipfsApiUsername |quote }}
-            password:  {{ .Values.config.ipfsApiPassword | quote }}
+            {{- if .Values.ipfs.enabled }}
+            username: {{ .Values.ipfs.apiUsername | quote }}
+            password: {{ .Values.ipfs.apiPassword | quote }}
+            {{- else }}
+            username: {{ .Values.config.ipfsApiUsername | quote }}
+            password: {{ .Values.config.ipfsApiPassword | quote }}
+            {{- end }}
           {{- end }}
         gateway:
+          {{- if .Values.ipfs.enabled }}
+          url: http://{{ include "firefly.fullname" . }}-ipfs.{{ .Release.Namespace }}.svc:{{ .Values.ipfs.service.gatewayPort }}
+          {{- else }}
           url: {{ tpl .Values.config.ipfsGatewayUrl . }}
-          {{- if and .Values.config.ipfsGatewayUsername .Values.config.ipfsGatewayPassword }}
+          {{- end }}
+          {{- if or (and .Values.config.ipfsGatewayUsername .Values.config.ipfsGatewayPassword) (and .Values.ipfs.enabled .Values.ipfs.apiUsername .Values.ipfs.apiPassword) }}
           auth:
+            {{- if .Values.ipfs.enabled }}
+            username: {{ .Values.ipfs.apiUsername | quote }}
+            password: {{ .Values.ipfs.apiPassword | quote }}
+            {{- else }}
             username: {{ .Values.config.ipfsGatewayUsername | quote }}
             password: {{ .Values.config.ipfsGatewayPassword | quote }}
+            {{- end }}
           {{- end }}
   {{- end }}
   {{- if .Values.config.extraSharedstorage }}
