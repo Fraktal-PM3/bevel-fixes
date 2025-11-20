@@ -1,0 +1,125 @@
+config:
+  defaultBlockchainType: fabric
+  organizationName: "org1"
+  organizationKey: "org1"
+
+  fabconnectUrl: "http://fabconnect-fabconnect:3000"
+  fabconnectChannel: "pm3"
+  fabconnectSigner: "org1"
+  fabconnectTopic: "0"
+  fabconnectRetry: true
+
+  postgresUrl: "postgres://postgres:f1refly@firefly-postgres-postgresql:5432/firefly?sslmode=disable"
+  postgresAutomigrate: true
+
+  fireflyChaincode: "firefly"
+  fireflyContracts:
+    - chaincode: "firefly"
+      channel: "pm3"
+      firstEvent: "0"
+
+  ipfsApiUrl: "http://fraktal-firefly-firefly-ipfs:5001"
+  ipfsGatewayUrl: "http://fraktal-firefly-firefly-ipfs:8080"
+
+  adminEnabled: true
+  metricsEnabled: true
+  debugEnabled: false
+
+core:
+  image:
+    repository: ghcr.io/hyperledger/firefly
+    tag: v1.4.0
+    pullPolicy: IfNotPresent
+
+  service:
+    type: ClusterIP
+    httpPort: 5000
+    adminPort: 5001
+    metricsPort: 5100
+
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+    requests:
+      cpu: 100m
+      memory: 256Mi
+
+  ingress:
+    enabled: false
+    className: ""
+    annotations: {}
+    hosts:
+      - host: firefly-org1.example.com
+    tls: []
+
+  jobs:
+    postgresMigrations:
+      enabled: true
+    registration:
+      enabled: false
+      ffUrl: "http://fraktal-firefly-firefly:5000"
+      ffNamespaces:
+        - default
+
+dataexchange:
+  enabled: false
+  image:
+    repository: ghcr.io/hyperledger/firefly-dataexchange-https
+    tag: v1.3.2
+    pullPolicy: IfNotPresent
+  apiKey: ""
+  tlsSecret:
+    enabled: false
+    name: ""
+  certificate:
+    enabled: false
+    issuerRef:
+      name: selfsigned-ca
+      kind: ClusterIssuer
+  service:
+    type: ClusterIP
+    apiPort: 5000
+    p2pPort: 5001
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 256Mi
+  persistentVolumes:
+    peers:
+      size: 1Gi
+      storageClass: ""
+    blobs:
+      enabled: true
+      size: 2Gi
+      storageClass: ""
+  ingress:
+    enabled: false
+    annotations: {}
+    hosts:
+      - host: firefly-org1-dx.example.com
+
+erc1155:
+  enabled: false
+
+erc20erc721:
+  enabled: false
+
+ethconnect:
+  enabled: false
+
+evmconnect:
+  enabled: false
+
+sandbox:
+  enabled: true
+  service:
+    type: ClusterIP
+    port: 3001
+  ingress:
+    enabled: false
+    hosts:
+      - host: firefly-sandbox-org1.example.com
