@@ -1,0 +1,62 @@
+# Example values file for FabConnect
+# Copy this file and customize for your environment
+
+# === KEY CONFIGURATION - Easy to override with Ansible ===
+peerUrl: grpcs://peer0.org1.example.com:7051
+ordererUrl: grpcs://orderer.example.com:7050
+caUrl: https://ca_org1:7054
+organizationName: org1.example.com
+organizationMspId: Org1MSP
+channelName: pm3
+enrollId: admin
+enrollSecret: adminpw
+
+# === IMAGE CONFIGURATION ===
+image:
+  repository: ghcr.io/hyperledger/firefly-fabconnect
+  tag: "sha256:a52dd8c60802562a3752015480af590b7f350fc165297c62a077394d7c49557c"
+  pullPolicy: IfNotPresent
+
+# === DEPLOYMENT CONFIGURATION ===
+replicaCount: 1
+
+# === FABCONNECT CONFIGURATION ===
+config:
+  maxInFlight: 10
+  maxTXWaitTime: 60
+  sendConcurrency: 25
+  port: 3000
+  webhooksAllowPrivateIPs: true
+
+# === SECRETS ===
+# Name of the secret containing the MSP directory structure
+mspSecret: fabconnect-msp
+
+# === SERVICE CONFIGURATION ===
+service:
+  type: ClusterIP
+  port: 3000
+
+# === HEALTH CHECK CONFIGURATION ===
+healthcheck:
+  enabled: true
+  path: /status
+  initialDelaySeconds: 10
+  periodSeconds: 10
+  timeoutSeconds: 5
+  successThreshold: 1
+  failureThreshold: 3
+
+# === RESOURCE LIMITS (optional) ===
+resources: {}
+  # limits:
+  #   cpu: 500m
+  #   memory: 512Mi
+  # requests:
+  #   cpu: 250m
+  #   memory: 256Mi
+
+# === NODE SELECTION (optional) ===
+nodeSelector: {}
+tolerations: []
+affinity: {}

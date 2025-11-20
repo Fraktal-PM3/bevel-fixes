@@ -1,0 +1,48 @@
+# Key configuration - easily overridable via Ansible
+peerUrl: grpcs://peer0.org1.example.com:7051
+ordererUrl: grpcs://orderer.example.com:7050
+caUrl: https://ca_org1:7054
+organizationName: org1.example.com
+organizationMspId: Org1MSP
+channelName: pm3
+enrollId: admin
+enrollSecret: adminpw
+
+image:
+  repository: ghcr.io/hyperledger/firefly-fabconnect
+  tag: "sha256:a52dd8c60802562a3752015480af590b7f350fc165297c62a077394d7c49557c"
+  pullPolicy: IfNotPresent
+
+replicaCount: 1
+
+# FabConnect configuration
+config:
+  maxInFlight: 10
+  maxTXWaitTime: 60
+  sendConcurrency: 25
+  port: 3000
+  webhooksAllowPrivateIPs: true
+
+# MSP Secret - contains the complete MSP directory structure
+# mounted at /etc/firefly/organizations
+mspSecret: fabconnect-msp
+
+service:
+  type: ClusterIP
+  port: 3000
+
+# Healthcheck configuration
+healthcheck:
+  enabled: true
+  path: /status
+  initialDelaySeconds: 10
+  periodSeconds: 10
+  timeoutSeconds: 5
+  successThreshold: 1
+  failureThreshold: 3
+
+resources: {}
+
+nodeSelector: {}
+tolerations: []
+affinity: {}

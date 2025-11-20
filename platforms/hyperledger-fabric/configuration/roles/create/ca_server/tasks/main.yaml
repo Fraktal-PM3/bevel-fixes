@@ -24,7 +24,7 @@
 - name: "Set Variable sc_name"
   set_fact:
     sc_name: "{{ component }}-bevel-storageclass"
-    sc_enabled: false
+    sc_enabled: true
 
 # Create the CA value file
 - name: "Create CA server values"
@@ -42,9 +42,9 @@
     external_url_suffix: "{{ org.external_url_suffix }}"
     kubernetes_url: "{{ kubernetes_server_url.stdout }}"
 
-# Git Push: Push the above generated files to git directory 
+# Git Push: Push the above generated files to git directory
 - name: Git Push
-  include_role: 
+  include_role:
     name: "{{ playbook_dir }}/../../shared/configuration/roles/git_push"
   vars:
     GIT_DIR: "{{ playbook_dir }}/../../../"
