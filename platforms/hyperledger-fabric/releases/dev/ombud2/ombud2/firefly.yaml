@@ -63,6 +63,7 @@ spec:
       image:
         tag: "latest"
 
+
       # Fabric network connection details
       fabric:
         peerUrl: "grpcs://peer0.ombud2-net.pm3fraktal.se:443"
