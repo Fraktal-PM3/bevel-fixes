@@ -8,7 +8,8 @@ config:
 
   # Organization configuration
   organizationName: "{{ component }}"
-  organizationKey: "{{ component }}"
+  # Use the Admin identity from MSP as the organization key for signing
+  organizationKey: "Admin@{{ component }}-net"
 
   # Set Fabric as the default blockchain
   defaultBlockchainType: "fabric"
@@ -17,7 +18,8 @@ config:
   fabconnectUrl: ""  # Auto-discovered from subchart
   fabconnectChannel: "{{ fabric_channel }}"
   fabconnectChaincode: "{{ firefly_config.fabconnect_chaincode }}"
-  fabconnectSigner: "{{ firefly_config.fabconnect_signer }}"
+  # Use the Admin identity from MSP for signing transactions
+  fabconnectSigner: "Admin@{{ component }}-net"
   fabconnectRetry: {{ firefly_config.fabconnect_retry | default(true) }}
 
   # Database configuration (auto-configured with built-in PostgreSQL)
@@ -47,9 +49,9 @@ fabconnect:
     tag: "latest"
 
   # Identity auto-enrollment configuration
-  # CRITICAL: This must match config.fabconnectSigner for proper identity integration
+  # Disabled - using Admin identity from MSP secret instead
   config:
-    autoEnrollIdentity: "{{ firefly_config.fabconnect_signer }}"
+    autoEnrollIdentity: ""
 
   # Fabric network connection details
   fabric:
