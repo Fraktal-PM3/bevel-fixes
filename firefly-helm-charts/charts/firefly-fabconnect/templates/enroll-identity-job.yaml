@@ -111,21 +111,21 @@ spec:
                 echo "Identity '$IDENTITY_NAME' is enrolled and ready"
 
                 # Create status ConfigMap to signal success
-                cat <<EOF > /tmp/configmap.yaml
-              apiVersion: v1
-              kind: ConfigMap
-              metadata:
-                name: {{ include "firefly-fabconnect.fullname" . }}-identity-status
-                namespace: $NAMESPACE
-                labels:
-                  {{- include "firefly-fabconnect.labels" . | nindent 12 }}
-                  app.kubernetes.io/component: identity-status
-              data:
-                identity-name: "$IDENTITY_NAME"
-                enrollment-status: "success"
-                enrollment-timestamp: "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-                identity-exists: "true"
-              EOF
+                cat <<'EOF' > /tmp/configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "firefly-fabconnect.fullname" . }}-identity-status
+  namespace: ${NAMESPACE}
+  labels:
+    {{- include "firefly-fabconnect.labels" . | nindent 4 }}
+    app.kubernetes.io/component: identity-status
+data:
+  identity-name: "${IDENTITY_NAME}"
+  enrollment-status: "success"
+  enrollment-timestamp: "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  identity-exists: "true"
+EOF
 
                 # Use kubectl from service account to create ConfigMap
                 TOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)
