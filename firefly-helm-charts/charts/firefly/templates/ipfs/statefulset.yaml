@@ -55,8 +55,8 @@ spec:
             ipfs config Addresses.Gateway /ip4/0.0.0.0/tcp/8080
           {{- if .Values.ipfs.swarmKey }}
             cat > /data/ipfs/swarm.key <<'EOF'
-{{ .Values.ipfs.swarmKey }}
-EOF
+          {{ .Values.ipfs.swarmKey | trimSuffix "\n" }}
+            EOF
             ipfs bootstrap rm --all
           {{- end }}
           fi
