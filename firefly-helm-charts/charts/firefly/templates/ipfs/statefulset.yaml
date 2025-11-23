@@ -53,12 +53,12 @@ spec:
             ipfs init --profile={{ .Values.ipfs.profile }}
             ipfs config Addresses.API /ip4/0.0.0.0/tcp/5001
             ipfs config Addresses.Gateway /ip4/0.0.0.0/tcp/8080
-            {{- if .Values.ipfs.swarmKey }}
+          {{- if .Values.ipfs.swarmKey }}
             cat > /data/ipfs/swarm.key <<'EOF'
-            {{- .Values.ipfs.swarmKey | nindent 12 }}
-            EOF
+          {{ .Values.ipfs.swarmKey | nindent 10 }}
+          EOF
             ipfs bootstrap rm --all
-            {{- end }}
+          {{- end }}
           fi
         volumeMounts:
         - name: ipfs-data
