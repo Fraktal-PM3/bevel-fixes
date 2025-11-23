@@ -106,9 +106,6 @@ spec:
                 # Verify the identity is actually enrolled and usable
                 IDENTITY_INFO=$(curl -sf $FABCONNECT_URL/identities/$IDENTITY_NAME)
                 echo "Identity info: $IDENTITY_INFO"
-
-                echo "Identity '$IDENTITY_NAME' is enrolled and ready"
-
                 echo "Identity '$IDENTITY_NAME' is enrolled and ready"
                 exit 0
               fi
