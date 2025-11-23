@@ -55,6 +55,8 @@ We truncate at 63 chars because some Kubernetes name fields are limited to this 
 {{- define "firefly.nodeName" -}}
 {{- if .Values.core.nodeNameOverride }}
 {{- .Values.core.nodeNameOverride | trunc 63 | trimSuffix "-" }}
+{{- else if and .Values.fabconnect.enabled .Values.config.fabconnectSigner }}
+{{- .Values.config.fabconnectSigner | trunc 63 | trimSuffix "-" }}
 {{- else }}
 {{- printf "%s-%s" .Release.Namespace (include "firefly.fullname" .) | trunc 63 | trimSuffix "-" }}
 {{- end }}
