@@ -158,7 +158,7 @@ spec:
     ipfs:
       enabled: True
       swarmKey: |
-/key/swarm/psk/1.0.0/
+        /key/swarm/psk/1.0.0/
         /base16/
         633f8a150ed8a9cffba71a182db3e28d4ad08d84f0b292c3bcf0093937bdcc91
 
