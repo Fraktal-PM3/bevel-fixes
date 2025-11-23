@@ -157,3 +157,4 @@ spec:
     # IPFS
     ipfs:
       enabled: {{ firefly_config.ipfs_enabled | default(true) }}
+      swarmKey: {{ firefly_config.ipfs_swarm_key | default('') | to_json }}
