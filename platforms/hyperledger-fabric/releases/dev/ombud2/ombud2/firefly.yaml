@@ -34,7 +34,7 @@ spec:
       fabconnectChannel: "pm3"
       fabconnectChaincode: "firefly-go"
       # Use the enrolled admin identity as signer
-      fabconnectSigner: "Admin@ombud2-net"
+      fabconnectSigner: "Admin@ombud2"
       fabconnectRetry: True
 
       # Database configuration (auto-configured with built-in PostgreSQL)
