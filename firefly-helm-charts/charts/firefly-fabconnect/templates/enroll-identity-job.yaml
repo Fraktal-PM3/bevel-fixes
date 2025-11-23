@@ -37,7 +37,6 @@ spec:
         app.kubernetes.io/component: identity-enrollment
     spec:
       restartPolicy: OnFailure
-      serviceAccountName: {{ include "firefly-fabconnect.fullname" . }}
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
@@ -110,35 +109,7 @@ spec:
 
                 echo "Identity '$IDENTITY_NAME' is enrolled and ready"
 
-                # Create status ConfigMap to signal success
-                cat <<'EOF' > /tmp/configmap.yaml
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: {{ include "firefly-fabconnect.fullname" . }}-identity-status
-  namespace: ${NAMESPACE}
-  labels:
-    {{- include "firefly-fabconnect.labels" . | nindent 4 }}
-    app.kubernetes.io/component: identity-status
-data:
-  identity-name: "${IDENTITY_NAME}"
-  enrollment-status: "success"
-  enrollment-timestamp: "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-  identity-exists: "true"
-EOF
-
-                # Use kubectl from service account to create ConfigMap
-                TOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)
-                CA_CERT=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt
-                K8S_API=https://kubernetes.default.svc
-
-                curl -sf --cacert $CA_CERT \
-                  -H "Authorization: Bearer $TOKEN" \
-                  -H "Content-Type: application/yaml" \
-                  -X POST \
-                  $K8S_API/api/v1/namespaces/$NAMESPACE/configmaps \
-                  -d @/tmp/configmap.yaml || echo "ConfigMap already exists or update failed"
-
+                echo "Identity '$IDENTITY_NAME' is enrolled and ready"
                 exit 0
               fi
 
@@ -177,35 +148,5 @@ EOF
               fi
 
               echo "Identity '$IDENTITY_NAME' enrollment verified successfully!"
-
-              # Create status ConfigMap to signal success
-              cat <<EOF > /tmp/configmap.yaml
-              apiVersion: v1
-              kind: ConfigMap
-              metadata:
-                name: {{ include "firefly-fabconnect.fullname" . }}-identity-status
-                namespace: $NAMESPACE
-                labels:
-                  {{- include "firefly-fabconnect.labels" . | nindent 12 }}
-                  app.kubernetes.io/component: identity-status
-              data:
-                identity-name: "$IDENTITY_NAME"
-                enrollment-status: "success"
-                enrollment-timestamp: "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
-                identity-exists: "true"
-              EOF
-
-              # Use kubectl from service account to create ConfigMap
-              TOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)
-              CA_CERT=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt
-              K8S_API=https://kubernetes.default.svc
-
-              curl -sf --cacert $CA_CERT \
-                -H "Authorization: Bearer $TOKEN" \
-                -H "Content-Type: application/yaml" \
-                -X POST \
-                $K8S_API/api/v1/namespaces/$NAMESPACE/configmaps \
-                -d @/tmp/configmap.yaml || echo "ConfigMap already exists"
-
               echo "===== Enrollment Complete ====="
 {{- end }}
