@@ -8,17 +8,11 @@
 # This role creates Helm values for FireFly deployment
 # Each organization gets a unique FireFly instance with its own ingress URL
 
-# Create FireFly directory in releases
-- name: Create FireFly directory
-  file:
-    path: "{{ values_dir }}/firefly"
-    state: directory
-
-# Create FireFly Helm values file
-- name: Create FireFly Helm values file
+# Create FireFly HelmRelease manifest
+- name: Create FireFly HelmRelease manifest
   template:
-    src: "firefly-values.yaml.j2"
-    dest: "{{ values_dir }}/firefly/firefly-values.yaml"
+    src: "firefly-release.yaml.j2"
+    dest: "{{ values_dir }}/{{ component }}/firefly.yaml"
 
 # Git Push: Push the generated values file to GitOps repository
 - name: Git Push - FireFly values
