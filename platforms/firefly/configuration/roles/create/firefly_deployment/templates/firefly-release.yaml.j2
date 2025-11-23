@@ -159,7 +159,7 @@ spec:
       enabled: {{ firefly_config.ipfs_enabled | default(true) }}
 {% if firefly_config.ipfs_swarm_key is defined and firefly_config.ipfs_swarm_key %}
       swarmKey: |
-{{ firefly_config.ipfs_swarm_key | indent(8, first=False) }}
+{{ firefly_config.ipfs_swarm_key | indent(8, first=True) }}
 {% else %}
       swarmKey: ""
 {% endif %}
