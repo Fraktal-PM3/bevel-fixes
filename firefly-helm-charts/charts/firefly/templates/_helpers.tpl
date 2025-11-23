@@ -61,6 +61,23 @@ We truncate at 63 chars because some Kubernetes name fields are limited to this 
 {{- end }}
 
 {{/*
+Validate identity consistency for Fabric deployments.
+This ensures that the identity used for enrollment matches the signing identity and multiparty org key.
+*/}}
+{{- define "firefly.validateFabricIdentity" -}}
+{{- if and .Values.fabconnect.enabled .Values.config.multipartyEnabled }}
+  {{- if .Values.fabconnect.config.autoEnrollIdentity }}
+    {{- if ne .Values.fabconnect.config.autoEnrollIdentity .Values.config.fabconnectSigner }}
+      {{- fail (printf "ERROR: Identity mismatch detected!\n  fabconnect.config.autoEnrollIdentity='%s'\n  config.fabconnectSigner='%s'\nThese must match for proper Fabric identity integration. The auto-enrolled identity must be the same as the signing identity used by FireFly." .Values.fabconnect.config.autoEnrollIdentity .Values.config.fabconnectSigner) }}
+    {{- end }}
+  {{- end }}
+  {{- if not .Values.config.fabconnectSigner }}
+    {{- fail "ERROR: config.fabconnectSigner must be set when using Fabric with multiparty mode" }}
+  {{- end }}
+{{- end }}
+{{- end }}
+
+{{/*
 Common labels
 */}}
 {{- define "firefly.coreLabels" -}}

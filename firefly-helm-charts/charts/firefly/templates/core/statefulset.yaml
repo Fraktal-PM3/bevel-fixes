@@ -16,6 +16,8 @@
   limitations under the License.
 */}}
 
+{{- include "firefly.validateFabricIdentity" . -}}
+
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -49,6 +51,28 @@ spec:
       {{- if or .Values.core.initContainers (and .Values.fabconnect.enabled .Values.fabconnect.config.autoEnrollIdentity (ne .Values.fabconnect.config.autoEnrollIdentity "")) }}
       initContainers:
         {{- if and .Values.fabconnect.enabled .Values.fabconnect.config.autoEnrollIdentity (ne .Values.fabconnect.config.autoEnrollIdentity "") }}
+        - name: wait-for-fabconnect
+          image: curlimages/curl:latest
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              set -e
+              FABCONNECT_URL="http://{{ include "firefly.fullname" . }}-fabconnect.{{ .Release.Namespace }}.svc:{{ .Values.fabconnect.service.port }}"
+
+              echo "===== FireFly Identity Verification ====="
+              echo "Waiting for Fabconnect to be available..."
+              MAX_RETRIES=120
+              RETRY_COUNT=0
+              until curl -sf $FABCONNECT_URL/status > /dev/null 2>&1; do
+                RETRY_COUNT=$((RETRY_COUNT + 1))
+                if [ $RETRY_COUNT -ge $MAX_RETRIES ]; then
+                  echo "ERROR: Fabconnect not available after $MAX_RETRIES attempts"
+                  exit 1
+                fi
+                echo "Fabconnect not ready yet... (attempt $RETRY_COUNT/$MAX_RETRIES)"
+                sleep 5
+              done
+              echo "Fabconnect is available!"
         - name: wait-for-identity
           image: curlimages/curl:latest
           command: ["/bin/sh", "-c"]
@@ -57,6 +81,21 @@ spec:
               set -e
               FABCONNECT_URL="http://{{ include "firefly.fullname" . }}-fabconnect.{{ .Release.Namespace }}.svc:{{ .Values.fabconnect.service.port }}"
               IDENTITY_NAME="{{ tpl .Values.fabconnect.config.autoEnrollIdentity . }}"
+              EXPECTED_SIGNER="{{ .Values.config.fabconnectSigner }}"
+
+              echo "===== FireFly Identity Verification ====="
+              echo "Expected Identity: $IDENTITY_NAME"
+              echo "Expected Signer: $EXPECTED_SIGNER"
+              echo "==========================================="
+
+              # Verify identity consistency
+              if [ "$IDENTITY_NAME" != "$EXPECTED_SIGNER" ]; then
+                echo "ERROR: Identity mismatch!"
+                echo "  autoEnrollIdentity: $IDENTITY_NAME"
+                echo "  fabconnectSigner: $EXPECTED_SIGNER"
+                echo "These must match for proper operation"
+                exit 1
+              fi
 
               echo "Waiting for identity '$IDENTITY_NAME' to be enrolled..."
               MAX_RETRIES=120
@@ -65,13 +104,25 @@ spec:
                 RETRY_COUNT=$((RETRY_COUNT + 1))
                 if [ $RETRY_COUNT -ge $MAX_RETRIES ]; then
                   echo "ERROR: Identity '$IDENTITY_NAME' was not enrolled after $MAX_RETRIES attempts"
-                  echo "Please check the enrollment job logs"
+                  echo "Please check the fabconnect-enroll-identity job logs:"
+                  echo "  kubectl logs -n {{ .Release.Namespace }} job/{{ include "firefly.fullname" . }}-fabconnect-enroll-identity"
                   exit 1
                 fi
                 echo "Identity not ready yet, waiting... (attempt $RETRY_COUNT/$MAX_RETRIES)"
                 sleep 5
               done
+
+              # Verify identity is actually usable by getting its details
+              echo "Verifying identity details..."
+              IDENTITY_INFO=$(curl -sf $FABCONNECT_URL/identities/$IDENTITY_NAME)
+              if [ -z "$IDENTITY_INFO" ]; then
+                echo "ERROR: Identity exists but could not retrieve details"
+                exit 1
+              fi
+
               echo "Identity '$IDENTITY_NAME' is enrolled and ready!"
+              echo "Identity details: $IDENTITY_INFO"
+              echo "===== Verification Complete ====="
         {{- end }}
         {{- if .Values.core.initContainers }}
         {{- tpl .Values.core.initContainers . | nindent 8 }}

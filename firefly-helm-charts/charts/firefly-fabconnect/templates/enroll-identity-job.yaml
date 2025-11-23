@@ -37,10 +37,36 @@ spec:
         app.kubernetes.io/component: identity-enrollment
     spec:
       restartPolicy: OnFailure
+      serviceAccountName: {{ include "firefly-fabconnect.fullname" . }}
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      initContainers:
+        - name: wait-for-ca
+          image: curlimages/curl:latest
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              set -e
+              CA_URL="{{ .Values.fabric.caUrl }}"
+              echo "Checking Fabric CA availability at $CA_URL..."
+
+              MAX_RETRIES=60
+              RETRY_COUNT=0
+              SLEEP_TIME=5
+
+              until curl -skf $CA_URL/cainfo > /dev/null 2>&1; do
+                RETRY_COUNT=$((RETRY_COUNT + 1))
+                if [ $RETRY_COUNT -ge $MAX_RETRIES ]; then
+                  echo "ERROR: Fabric CA not available after $MAX_RETRIES attempts"
+                  exit 1
+                fi
+                echo "CA not ready yet, waiting... (attempt $RETRY_COUNT/$MAX_RETRIES)"
+                sleep $SLEEP_TIME
+              done
+
+              echo "Fabric CA is available!"
       containers:
         - name: enroll-identity
           image: curlimages/curl:latest
@@ -50,10 +76,19 @@ spec:
               set -e
               FABCONNECT_URL="http://{{ include "firefly-fabconnect.fullname" . }}.{{ .Release.Namespace }}.svc:{{ .Values.service.port }}"
               IDENTITY_NAME="{{ .Values.config.autoEnrollIdentity }}"
+              NAMESPACE="{{ .Release.Namespace }}"
+
+              echo "===== FireFly Fabconnect Identity Enrollment ====="
+              echo "Identity Name: $IDENTITY_NAME"
+              echo "Fabconnect URL: $FABCONNECT_URL"
+              echo "Organization: {{ .Values.fabric.organizationName }}"
+              echo "=================================================="
 
               echo "Waiting for fabconnect to be ready at $FABCONNECT_URL..."
               MAX_RETRIES=60
               RETRY_COUNT=0
+              SLEEP_TIME=5
+
               until curl -sf $FABCONNECT_URL/status > /dev/null 2>&1; do
                 RETRY_COUNT=$((RETRY_COUNT + 1))
                 if [ $RETRY_COUNT -ge $MAX_RETRIES ]; then
@@ -61,13 +96,49 @@ spec:
                   exit 1
                 fi
                 echo "Fabconnect not ready yet, waiting... (attempt $RETRY_COUNT/$MAX_RETRIES)"
-                sleep 5
+                sleep $SLEEP_TIME
               done
               echo "Fabconnect is ready!"
 
               echo "Checking if identity '$IDENTITY_NAME' exists..."
               if curl -sf $FABCONNECT_URL/identities/$IDENTITY_NAME > /dev/null 2>&1; then
-                echo "Identity '$IDENTITY_NAME' already exists, skipping enrollment"
+                echo "Identity '$IDENTITY_NAME' already exists, verifying enrollment..."
+
+                # Verify the identity is actually enrolled and usable
+                IDENTITY_INFO=$(curl -sf $FABCONNECT_URL/identities/$IDENTITY_NAME)
+                echo "Identity info: $IDENTITY_INFO"
+
+                echo "Identity '$IDENTITY_NAME' is enrolled and ready"
+
+                # Create status ConfigMap to signal success
+                cat <<EOF > /tmp/configmap.yaml
+              apiVersion: v1
+              kind: ConfigMap
+              metadata:
+                name: {{ include "firefly-fabconnect.fullname" . }}-identity-status
+                namespace: $NAMESPACE
+                labels:
+                  {{- include "firefly-fabconnect.labels" . | nindent 12 }}
+                  app.kubernetes.io/component: identity-status
+              data:
+                identity-name: "$IDENTITY_NAME"
+                enrollment-status: "success"
+                enrollment-timestamp: "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+                identity-exists: "true"
+              EOF
+
+                # Use kubectl from service account to create ConfigMap
+                TOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)
+                CA_CERT=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+                K8S_API=https://kubernetes.default.svc
+
+                curl -sf --cacert $CA_CERT \
+                  -H "Authorization: Bearer $TOKEN" \
+                  -H "Content-Type: application/yaml" \
+                  -X POST \
+                  $K8S_API/api/v1/namespaces/$NAMESPACE/configmaps \
+                  -d @/tmp/configmap.yaml || echo "ConfigMap already exists or update failed"
+
                 exit 0
               fi
 
@@ -77,7 +148,9 @@ spec:
                 -d "{\"name\":\"$IDENTITY_NAME\",\"type\":\"client\",\"affiliation\":\"{{ .Values.fabric.organizationName }}\",\"maxEnrollments\":-1}")
 
               echo "Registration response: $RESPONSE"
-              SECRET=$(echo "$RESPONSE" | grep -o '"secret":"[^"]*"' | cut -d'"' -f4)
+
+              # Extract secret using sed (more portable than grep -P)
+              SECRET=$(echo "$RESPONSE" | sed -n 's/.*"secret":"\([^"]*\)".*/\1/p')
 
               if [ -z "$SECRET" ]; then
                 echo "ERROR: Failed to get secret for identity enrollment"
@@ -85,11 +158,54 @@ spec:
                 exit 1
               fi
 
+              echo "Secret extracted successfully (length: ${#SECRET})"
+
               echo "Enrolling identity '$IDENTITY_NAME' with secret..."
               ENROLL_RESPONSE=$(curl -sf -X POST $FABCONNECT_URL/identities/$IDENTITY_NAME/enroll \
                 -H "Content-Type: application/json" \
                 -d "{\"secret\":\"$SECRET\"}")
 
               echo "Enrollment response: $ENROLL_RESPONSE"
-              echo "Identity '$IDENTITY_NAME' enrollment complete!"
+
+              # Verify enrollment was successful
+              echo "Verifying enrollment..."
+              sleep 2
+
+              if ! curl -sf $FABCONNECT_URL/identities/$IDENTITY_NAME > /dev/null 2>&1; then
+                echo "ERROR: Identity verification failed after enrollment"
+                exit 1
+              fi
+
+              echo "Identity '$IDENTITY_NAME' enrollment verified successfully!"
+
+              # Create status ConfigMap to signal success
+              cat <<EOF > /tmp/configmap.yaml
+              apiVersion: v1
+              kind: ConfigMap
+              metadata:
+                name: {{ include "firefly-fabconnect.fullname" . }}-identity-status
+                namespace: $NAMESPACE
+                labels:
+                  {{- include "firefly-fabconnect.labels" . | nindent 12 }}
+                  app.kubernetes.io/component: identity-status
+              data:
+                identity-name: "$IDENTITY_NAME"
+                enrollment-status: "success"
+                enrollment-timestamp: "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+                identity-exists: "true"
+              EOF
+
+              # Use kubectl from service account to create ConfigMap
+              TOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)
+              CA_CERT=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+              K8S_API=https://kubernetes.default.svc
+
+              curl -sf --cacert $CA_CERT \
+                -H "Authorization: Bearer $TOKEN" \
+                -H "Content-Type: application/yaml" \
+                -X POST \
+                $K8S_API/api/v1/namespaces/$NAMESPACE/configmaps \
+                -d @/tmp/configmap.yaml || echo "ConfigMap already exists"
+
+              echo "===== Enrollment Complete ====="
 {{- end }}

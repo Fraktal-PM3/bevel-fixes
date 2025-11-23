@@ -33,8 +33,9 @@ spec:
       fabconnectUrl: ""  # Auto-discovered from subchart
       fabconnectChannel: "pm3"
       fabconnectChaincode: "firefly-go"
-      # Use organization name as signer (matches official FireFly pattern)
-      fabconnectSigner: "transporter1"
+      # Fabric identity for signing transactions and multiparty org key
+      # MUST match fabconnect.config.autoEnrollIdentity
+      fabconnectSigner: "transporter1-firefly"
       fabconnectRetry: True
 
       # Database configuration (auto-configured with built-in PostgreSQL)
@@ -65,8 +66,9 @@ spec:
 
       # FabConnect configuration
       config:
-        # Enable automatic identity enrollment
-        autoEnrollIdentity: "transporter1"
+        # Automatically enroll identity for FireFly
+        # MUST match config.fabconnectSigner for proper identity integration
+        autoEnrollIdentity: "transporter1-firefly"
 
       # Fabric network connection details
       fabric:

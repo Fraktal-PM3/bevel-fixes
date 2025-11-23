@@ -166,7 +166,22 @@ config:
   # The Fabconnect topic to use for blockchain event subscriptions
   fabconnectTopic: 0
 
-  # The Fabric to use for signing transactions, must be pre-registered and enrolled
+  # The Fabric identity to use for signing transactions
+  #
+  # CRITICAL: This identity is used for:
+  #   1. Signing all blockchain transactions sent via FabConnect
+  #   2. The multiparty organization key (org.key in multiparty config)
+  #   3. The organization's DID (Decentralized Identity)
+  #
+  # IMPORTANT: When using fabconnect.config.autoEnrollIdentity, this value
+  # MUST match that enrollment identity name exactly. The validation will
+  # fail deployment if they don't match.
+  #
+  # Best practice naming: {organizationName}-firefly
+  # Example: "transporter1-firefly", "ombud1-firefly"
+  #
+  # This identity must be registered and enrolled with the Fabric CA
+  # before FireFly can use it (handled automatically if autoEnrollIdentity is set)
   fabconnectSigner: ""
 
   # The following values can be used to override the templating of specific plugin sections, in the case where
@@ -686,9 +701,23 @@ fabconnect:
 
   # FabConnect configuration
   config:
-    # Automatically register and enroll the signer identity
-    # Set this to the same value as config.fabconnectSigner to enable auto-enrollment
-    # Leave empty to disable automatic enrollment
+    # Automatically register and enroll the signer identity with Fabric CA
+    #
+    # CRITICAL: This value MUST match config.fabconnectSigner exactly
+    # The deployment will fail validation if these don't match
+    #
+    # When enabled (non-empty), a Helm hook job will:
+    #   1. Wait for Fabric CA to be available
+    #   2. Register the identity with the CA
+    #   3. Enroll the identity and retrieve certificates
+    #   4. Create a status ConfigMap for tracking
+    #
+    # The FireFly pod will wait for this enrollment to complete before starting
+    #
+    # Best practice: Use the same naming convention as fabconnectSigner
+    # Example: If fabconnectSigner is "transporter1-firefly", set this to "transporter1-firefly"
+    #
+    # Leave empty ("") to disable automatic enrollment (you must manually enroll the identity)
     autoEnrollIdentity: ""
 
   # Fabric network configuration

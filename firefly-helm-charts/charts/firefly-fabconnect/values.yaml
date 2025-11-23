@@ -222,9 +222,21 @@ config:
     configPath: "/fabconnect/ccp.yaml"
 
   # Identity auto-enrollment configuration
-  # -- Automatically register and enroll an identity on startup
-  # Set this to the identity name (e.g., "org1") to enable
-  # Leave empty to disable automatic enrollment
+  # -- Automatically register and enroll an identity for FireFly to use
+  #
+  # IMPORTANT: This identity will be used for:
+  #   1. Signing all Fabric transactions via FabConnect
+  #   2. FireFly's multiparty organization key
+  #   3. FireFly's DID (Decentralized Identity)
+  #
+  # Best practice naming convention: {organizationName}-firefly
+  # Example: "transporter1-firefly", "ombud1-firefly"
+  #
+  # This value MUST match the parent chart's config.fabconnectSigner value
+  # for proper identity integration.
+  #
+  # Set this to the desired identity name to enable auto-enrollment
+  # Leave empty ("") to disable automatic enrollment
   autoEnrollIdentity: ""
 
   # Custom configuration override
