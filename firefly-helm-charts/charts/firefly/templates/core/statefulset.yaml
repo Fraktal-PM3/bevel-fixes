@@ -46,9 +46,36 @@ spec:
       {{- end }}
       securityContext:
         {{- toYaml .Values.core.podSecurityContext | nindent 8 }}
-      {{- if .Values.core.initContainers }}
+      {{- if or .Values.core.initContainers (and .Values.fabconnect.enabled .Values.fabconnect.config.autoEnrollIdentity (ne .Values.fabconnect.config.autoEnrollIdentity "")) }}
       initContainers:
+        {{- if and .Values.fabconnect.enabled .Values.fabconnect.config.autoEnrollIdentity (ne .Values.fabconnect.config.autoEnrollIdentity "") }}
+        - name: wait-for-identity
+          image: curlimages/curl:latest
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              set -e
+              FABCONNECT_URL="http://{{ include "firefly.fullname" . }}-fabconnect.{{ .Release.Namespace }}.svc:{{ .Values.fabconnect.service.port }}"
+              IDENTITY_NAME="{{ tpl .Values.fabconnect.config.autoEnrollIdentity . }}"
+
+              echo "Waiting for identity '$IDENTITY_NAME' to be enrolled..."
+              MAX_RETRIES=120
+              RETRY_COUNT=0
+              until curl -sf $FABCONNECT_URL/identities/$IDENTITY_NAME > /dev/null 2>&1; do
+                RETRY_COUNT=$((RETRY_COUNT + 1))
+                if [ $RETRY_COUNT -ge $MAX_RETRIES ]; then
+                  echo "ERROR: Identity '$IDENTITY_NAME' was not enrolled after $MAX_RETRIES attempts"
+                  echo "Please check the enrollment job logs"
+                  exit 1
+                fi
+                echo "Identity not ready yet, waiting... (attempt $RETRY_COUNT/$MAX_RETRIES)"
+                sleep 5
+              done
+              echo "Identity '$IDENTITY_NAME' is enrolled and ready!"
+        {{- end }}
+        {{- if .Values.core.initContainers }}
         {{- tpl .Values.core.initContainers . | nindent 8 }}
+        {{- end }}
       {{- end }}
       containers:
         - name: firefly
