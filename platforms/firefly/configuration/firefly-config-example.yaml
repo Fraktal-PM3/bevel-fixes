@@ -14,6 +14,7 @@ firefly_config:
   postgres_automigrate: true                 # Auto-migrate PostgreSQL database schema
   sandbox_enabled: true                      # Enable sandbox UI for testing
   ipfs_enabled: true                         # Enable IPFS for data sharing
+  ipfs_swarm_key: ""                         # Optional: IPFS swarm key for private network (shared across all orgs)
   external_dns_target: "46.62.234.169"      # IP address for External DNS A record
 
   # Optional: Override default Fabric connection URLs
