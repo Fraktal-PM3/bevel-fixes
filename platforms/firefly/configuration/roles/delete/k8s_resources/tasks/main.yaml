@@ -79,6 +79,18 @@
   ignore_errors: yes
   when: "'job' in resource_types"
 
+- name: Delete FireFly Job Pods
+  k8s:
+    api_version: v1
+    kind: Pod
+    namespace: "{{ component_ns }}"
+    label_selectors:
+      - "job-name"
+    state: absent
+    kubeconfig: "{{ kubernetes.config_file }}"
+  ignore_errors: yes
+  when: "'job' in resource_types"
+
 - name: Delete FireFly PVCs
   k8s:
     api_version: v1
