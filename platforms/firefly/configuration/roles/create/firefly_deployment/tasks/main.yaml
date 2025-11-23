@@ -8,6 +8,15 @@
 # This role creates Helm values for FireFly deployment
 # Each organization gets a unique FireFly instance with its own ingress URL
 
+# Update Helm chart dependencies to ensure subcharts are up-to-date
+# This rebuilds packaged tarballs (like firefly-fabconnect-0.1.0.tgz) from source templates
+- name: Update FireFly Helm chart dependencies
+  command: helm dependency update
+  args:
+    chdir: "{{ playbook_dir }}/../../../firefly-helm-charts/charts/firefly"
+  run_once: true
+  delegate_to: localhost
+
 # Create FireFly HelmRelease manifest
 - name: Create FireFly HelmRelease manifest
   template:
