@@ -147,6 +147,12 @@ organizations:
       - {{ .Values.fabric.organizationName }}_peer
     certificateAuthorities:
       - {{ .Values.fabric.organizationName }}_ca
+    users:
+      {{ .Values.fabric.organizationName | replace "-net" "" }}:
+        cert:
+          path: {{ .Values.msp.mountPath }}/msp/users/admin/msp/signcerts/cert.pem
+        key:
+          path: {{ .Values.msp.mountPath }}/msp/users/admin/msp/keystore/key.pem
 
 peers:
   {{ .Values.fabric.organizationName }}_peer:

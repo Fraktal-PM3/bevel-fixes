@@ -63,6 +63,7 @@ spec:
       image:
         tag: "latest"
 
+
       # Fabric network connection details
       fabric:
         peerUrl: "{{ firefly_config.fabric_peer_url | default('grpcs://peer0.' + component + '-net.' + external_url_suffix + ':443') }}"
