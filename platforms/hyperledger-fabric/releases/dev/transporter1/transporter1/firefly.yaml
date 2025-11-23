@@ -1,0 +1,164 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: firefly
+  namespace: transporter1-net
+  annotations:
+    fluxcd.io/automated: "false"
+spec:
+  interval: 1m
+  releaseName: firefly
+  chart:
+    spec:
+      interval: 1m
+      sourceRef:
+        kind: GitRepository
+        name: flux-local
+        namespace: flux-local
+      chart: firefly-helm-charts/charts/firefly
+  values:
+    config:
+      # Enable debug and admin APIs
+      debugEnabled: true
+      adminEnabled: true
+
+      # Organization configuration
+      organizationName: "transporter1"
+      organizationKey: "transporter1"
+
+      # Set Fabric as the default blockchain
+      defaultBlockchainType: "fabric"
+
+      # FabConnect configuration
+      fabconnectUrl: ""  # Auto-discovered from subchart
+      fabconnectChannel: "pm3"
+      fabconnectChaincode: "firefly-go"
+      # Use organization name as signer (matches official FireFly pattern)
+      fabconnectSigner: "transporter1"
+      fabconnectRetry: True
+
+      # Database configuration (auto-configured with built-in PostgreSQL)
+      postgresAutomigrate: True
+
+      # Multiparty configuration
+      multipartyEnabled: True
+
+    # Data exchange configuration for peer-to-peer communication
+    dataexchange:
+      enabled: True
+
+      certificate:
+        enabled: true
+        issuerRef:
+          kind: ClusterIssuer
+          name: selfsigned-ca
+
+      tlsSecret:
+        enabled: false
+
+    # FabConnect subchart configuration
+    fabconnect:
+      enabled: true
+
+      image:
+        tag: "latest"
+
+      # FabConnect configuration
+      config:
+        # Enable automatic identity enrollment
+        autoEnrollIdentity: "transporter1"
+
+      # Fabric network connection details
+      fabric:
+        peerUrl: "grpcs://peer0.transporter1-net.pm3fraktal.se:443"
+        ordererUrl: "grpcs://orderer1.pm3org-net.pm3fraktal.se:443"
+        caUrl: "https://ca.transporter1-net.pm3fraktal.se:443"
+
+        # Organization details
+        organizationName: "transporter1-net"
+        organizationMspId: "transporter1MSP"
+
+        # Channel and chaincode
+        channelName: "pm3"
+        chaincodeName: "firefly-go"
+
+        # CA enrollment credentials
+        enrollId: "transporter1-admin"
+        enrollSecret: "transporter1-adminpw"
+
+      # MSP secret configuration
+      msp:
+        secretName: "fabconnect-msp"
+        mountPath: "/etc/firefly/organizations"
+
+      # Service configuration
+      service:
+        type: ClusterIP
+        port: 3000
+
+      # Resource allocation
+      resources:
+        limits:
+          cpu: 500m
+          memory: 512Mi
+        requests:
+          cpu: 100m
+          memory: 128Mi
+
+      # Persistent storage
+      persistentVolume:
+        accessModes:
+          - ReadWriteOnce
+        size: 5Gi
+        storageClass: ""
+
+      # Health check configuration
+      healthcheck:
+        enabled: true
+        initialDelaySeconds: 15
+
+      # Logging
+      log:
+        level: "info"
+
+    # Core FireFly pod configuration
+    core:
+      enabled: true
+
+      ingress:
+        enabled: true
+        className: "haproxy"
+        annotations:
+          external-dns.alpha.kubernetes.io/hostname: firefly.transporter1-net.pm3fraktal.se
+          external-dns.alpha.kubernetes.io/target: 46.62.234.169
+        hosts:
+          - host: firefly.transporter1-net.pm3fraktal.se
+        tls: []
+
+    # Sandbox UI
+    sandbox:
+      enabled: True
+
+      # Separate ingress for sandbox
+      ingress:
+        enabled: true
+        className: "haproxy"
+        annotations:
+          external-dns.alpha.kubernetes.io/hostname: sandbox.firefly.transporter1-net.pm3fraktal.se
+          external-dns.alpha.kubernetes.io/target: 46.62.234.169
+        hosts:
+          - host: sandbox.firefly.transporter1-net.pm3fraktal.se
+        tls: []
+
+    # PostgreSQL
+    postgres:
+      enabled: true
+
+    # IPFS
+    ipfs:
+      enabled: True
+      swarmKey: |
+/key/swarm/psk/1.0.0/
+        /base16/
+        633f8a150ed8a9cffba71a182db3e28d4ad08d84f0b292c3bcf0093937bdcc91
+
