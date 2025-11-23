@@ -33,7 +33,8 @@ spec:
       fabconnectUrl: ""  # Auto-discovered from subchart
       fabconnectChannel: "{{ fabric_channel }}"
       fabconnectChaincode: "{{ firefly_config.fabconnect_chaincode }}"
-      fabconnectSigner: "{{ firefly_config.fabconnect_signer }}"
+      # Don't specify signer - let SDK use default from connection profile
+      fabconnectSigner: ""
       fabconnectRetry: {{ firefly_config.fabconnect_retry | default(true) }}
 
       # Database configuration (auto-configured with built-in PostgreSQL)

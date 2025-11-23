@@ -33,7 +33,8 @@ spec:
       fabconnectUrl: ""  # Auto-discovered from subchart
       fabconnectChannel: "pm3"
       fabconnectChaincode: "firefly-go"
-      fabconnectSigner: "admin"
+      # Don't specify signer - let SDK use default from connection profile
+      fabconnectSigner: ""
       fabconnectRetry: True
 
       # Database configuration (auto-configured with built-in PostgreSQL)
