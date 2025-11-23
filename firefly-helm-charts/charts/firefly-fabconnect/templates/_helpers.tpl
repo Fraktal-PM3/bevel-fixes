@@ -153,6 +153,11 @@ organizations:
           path: {{ .Values.msp.mountPath }}/msp/users/admin/msp/signcerts/cert.pem
         key:
           path: {{ .Values.msp.mountPath }}/msp/users/admin/msp/keystore/key.pem
+      Admin@{{ .Values.fabric.organizationName }}:
+        cert:
+          path: {{ .Values.msp.mountPath }}/msp/users/admin/msp/signcerts/cert.pem
+        key:
+          path: {{ .Values.msp.mountPath }}/msp/users/admin/msp/keystore/key.pem
 
 peers:
   {{ .Values.fabric.organizationName }}_peer:
