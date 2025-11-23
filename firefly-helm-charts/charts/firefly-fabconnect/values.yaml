@@ -221,6 +221,12 @@ config:
     # -- Connection profile path (managed by chart)
     configPath: "/fabconnect/ccp.yaml"
 
+  # Identity auto-enrollment configuration
+  # -- Automatically register and enroll an identity on startup
+  # Set this to the identity name (e.g., "org1") to enable
+  # Leave empty to disable automatic enrollment
+  autoEnrollIdentity: ""
+
   # Custom configuration override
   # Use this to provide complete custom configuration
   # When set, this overrides all other config.* values

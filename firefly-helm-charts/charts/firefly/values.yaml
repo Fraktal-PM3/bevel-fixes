@@ -684,6 +684,13 @@ fabconnect:
     runAsNonRoot: true
     runAsUser: 1001
 
+  # FabConnect configuration
+  config:
+    # Automatically register and enroll the signer identity
+    # This uses config.fabconnectSigner as the identity name
+    # Set to false to disable automatic enrollment
+    autoEnrollIdentity: "{{ .Values.config.fabconnectSigner }}"
+
   # Fabric network configuration
   fabric:
     # NOTE: Override these values for your specific Fabric network

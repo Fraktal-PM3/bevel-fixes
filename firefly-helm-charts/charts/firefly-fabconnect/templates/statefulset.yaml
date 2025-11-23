@@ -88,6 +88,45 @@ spec:
               readOnly: true
             - name: msp-volume
               mountPath: {{ .Values.msp.mountPath }}
+        {{- if and .Values.config.autoEnrollIdentity (ne .Values.config.autoEnrollIdentity "") }}
+        - name: enroll-identity
+          image: curlimages/curl:latest
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              set -e
+              echo "Waiting for fabconnect to be ready..."
+              until curl -sf http://localhost:{{ .Values.service.port }}/status > /dev/null 2>&1; do
+                echo "Fabconnect not ready yet, waiting..."
+                sleep 5
+              done
+              echo "Fabconnect is ready!"
+
+              IDENTITY_NAME="{{ .Values.config.autoEnrollIdentity }}"
+              echo "Checking if identity '$IDENTITY_NAME' exists..."
+              if curl -sf http://localhost:{{ .Values.service.port }}/identities/$IDENTITY_NAME > /dev/null 2>&1; then
+                echo "Identity '$IDENTITY_NAME' already exists, skipping enrollment"
+                exit 0
+              fi
+
+              echo "Registering identity '$IDENTITY_NAME'..."
+              SECRET=$(curl -sf -X POST http://localhost:{{ .Values.service.port }}/identities \
+                -H "Content-Type: application/json" \
+                -d "{\"name\":\"$IDENTITY_NAME\",\"type\":\"client\",\"affiliation\":\"{{ .Values.fabric.organizationName }}\",\"maxEnrollments\":-1}" \
+                | grep -o '"secret":"[^"]*"' | cut -d'"' -f4)
+
+              if [ -z "$SECRET" ]; then
+                echo "Failed to get secret for identity enrollment"
+                exit 1
+              fi
+
+              echo "Enrolling identity '$IDENTITY_NAME'..."
+              curl -sf -X POST http://localhost:{{ .Values.service.port }}/identities/$IDENTITY_NAME/enroll \
+                -H "Content-Type: application/json" \
+                -d "{\"secret\":\"$SECRET\"}"
+
+              echo "Identity '$IDENTITY_NAME' enrollment complete!"
+        {{- end }}
       {{- if .Values.initContainers }}
         {{- tpl .Values.initContainers . | nindent 8 }}
       {{- end }}
