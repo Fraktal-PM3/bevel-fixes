@@ -113,7 +113,7 @@ spec:
               echo "Registering identity '$IDENTITY_NAME'..."
               RESPONSE=$(curl -sf -X POST $FABCONNECT_URL/identities \
                 -H "Content-Type: application/json" \
-                -d "{\"name\":\"$IDENTITY_NAME\",\"type\":\"client\",\"affiliation\":\"{{ .Values.fabric.organizationName }}\",\"maxEnrollments\":-1}")
+                -d "{\"name\":\"$IDENTITY_NAME\",\"type\":\"client\",\"maxEnrollments\":-1}")
 
               echo "Registration response: $RESPONSE"
 
