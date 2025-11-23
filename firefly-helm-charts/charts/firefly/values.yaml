@@ -687,9 +687,9 @@ fabconnect:
   # FabConnect configuration
   config:
     # Automatically register and enroll the signer identity
-    # This uses config.fabconnectSigner as the identity name
-    # Set to false to disable automatic enrollment
-    autoEnrollIdentity: "{{ .Values.config.fabconnectSigner }}"
+    # Set this to the same value as config.fabconnectSigner to enable auto-enrollment
+    # Leave empty to disable automatic enrollment
+    autoEnrollIdentity: ""
 
   # Fabric network configuration
   fabric:

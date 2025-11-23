@@ -63,6 +63,10 @@ spec:
       image:
         tag: "latest"
 
+      # FabConnect configuration
+      config:
+        # Enable automatic identity enrollment
+        autoEnrollIdentity: "ombud1"
 
       # Fabric network connection details
       fabric:
