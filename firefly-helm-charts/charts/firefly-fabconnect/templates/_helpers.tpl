@@ -135,24 +135,18 @@ client:
   tlsCerts:
     client:
       cert:
-        path: {{ .Values.msp.mountPath }}/msp/signcerts/cert.pem
+        path: {{ .Values.msp.mountPath }}/msp/users/admin/msp/signcerts/cert.pem
       key:
-        path: {{ .Values.msp.mountPath }}/msp/keystore/key.pem
+        path: {{ .Values.msp.mountPath }}/msp/users/admin/msp/keystore/key.pem
 
 organizations:
   {{ .Values.fabric.organizationName }}:
     mspid: {{ .Values.fabric.organizationMspId }}
-    cryptoPath: {{ .Values.msp.mountPath }}/msp/users
+    cryptoPath: /tmp/msp
     peers:
       - {{ .Values.fabric.organizationName }}_peer
     certificateAuthorities:
       - {{ .Values.fabric.organizationName }}_ca
-    users:
-      admin:
-        cert:
-          path: {{ .Values.msp.mountPath }}/msp/users/admin/msp/signcerts/cert.pem
-        key:
-          path: {{ .Values.msp.mountPath }}/msp/users/admin/msp/keystore/key.pem
 
 peers:
   {{ .Values.fabric.organizationName }}_peer:
