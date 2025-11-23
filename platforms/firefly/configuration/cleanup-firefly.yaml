@@ -44,6 +44,7 @@
           - service
           - ingress
           - configmap
+          - job
           - pvc
         label_selector: "app.kubernetes.io/instance=firefly"
       loop: "{{ network['organizations'] }}"

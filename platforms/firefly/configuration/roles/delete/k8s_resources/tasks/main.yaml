@@ -67,6 +67,18 @@
   ignore_errors: yes
   when: "'configmap' in resource_types"
 
+- name: Delete FireFly Jobs
+  k8s:
+    api_version: batch/v1
+    kind: Job
+    namespace: "{{ component_ns }}"
+    label_selectors:
+      - "{{ label_selector }}"
+    state: absent
+    kubeconfig: "{{ kubernetes.config_file }}"
+  ignore_errors: yes
+  when: "'job' in resource_types"
+
 - name: Delete FireFly PVCs
   k8s:
     api_version: v1
