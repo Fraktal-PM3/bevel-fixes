@@ -47,8 +47,48 @@ spec:
       {{- end }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
-      {{- if .Values.initContainers }}
       initContainers:
+        - name: setup-msp
+          image: busybox:latest
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              set -e
+              echo "Setting up MSP directory structure..."
+
+              # Create flat MSP structure (for backward compatibility)
+              mkdir -p {{ .Values.msp.mountPath }}/msp/{admincerts,cacerts,keystore,signcerts,tlscacerts}
+
+              # Create user directory structure (required by Fabric SDK)
+              mkdir -p {{ .Values.msp.mountPath }}/msp/users/admin/msp/{admincerts,cacerts,keystore,signcerts,tlscacerts}
+
+              cd /msp-secret
+              for file in *; do
+                # Convert __ back to / in filenames
+                target=$(echo "$file" | sed 's/__/\//g')
+
+                # Copy to flat structure
+                targetdir=$(dirname "{{ .Values.msp.mountPath }}/msp/$target")
+                mkdir -p "$targetdir"
+                cp "$file" "{{ .Values.msp.mountPath }}/msp/$target"
+                echo "Copied $file -> {{ .Values.msp.mountPath }}/msp/$target"
+
+                # Copy to user directory structure for Fabric SDK
+                user_targetdir=$(dirname "{{ .Values.msp.mountPath }}/msp/users/admin/msp/$target")
+                mkdir -p "$user_targetdir"
+                cp "$file" "{{ .Values.msp.mountPath }}/msp/users/admin/msp/$target"
+                echo "Copied $file -> {{ .Values.msp.mountPath }}/msp/users/admin/msp/$target"
+              done
+
+              echo "MSP setup complete"
+              ls -laR {{ .Values.msp.mountPath }}/msp/
+          volumeMounts:
+            - name: msp-secret
+              mountPath: /msp-secret
+              readOnly: true
+            - name: msp-volume
+              mountPath: {{ .Values.msp.mountPath }}
+      {{- if .Values.initContainers }}
         {{- tpl .Values.initContainers . | nindent 8 }}
       {{- end }}
       containers:
@@ -101,9 +141,8 @@ spec:
               mountPath: /fabconnect/ccp.yaml
               subPath: ccp.yaml
               readOnly: true
-            - name: msp
+            - name: msp-volume
               mountPath: {{ .Values.msp.mountPath }}
-              readOnly: true
             - name: fabconnect-data
               mountPath: /fabconnect/receipts
               subPath: receipts
@@ -134,9 +173,11 @@ spec:
         - name: ccp
           configMap:
             name: "{{ include "firefly-fabconnect.fullname" . }}-ccp"
-        - name: msp
+        - name: msp-secret
           secret:
             secretName: {{ .Values.msp.secretName }}
+        - name: msp-volume
+          emptyDir: {}
         - name: tmp
           emptyDir: {}
   volumeClaimTemplates:

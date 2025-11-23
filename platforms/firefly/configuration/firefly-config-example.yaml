@@ -1,0 +1,88 @@
+# FireFly Configuration Example
+# Add this section to each organization in build/network.yaml that should have FireFly deployed
+
+# Example for transporter1 organization:
+# Place this under the organization's services.peers section, after the chaincodes list
+
+firefly_config:
+  enabled: true                              # Enable FireFly deployment for this org
+  fabconnect_chaincode: "firefly-go"        # Chaincode to use with FabConnect (must be deployed)
+  fabconnect_signer: "admin"                # Fabric identity for signing transactions
+  fabconnect_retry: true                     # Enable retry logic in FabConnect
+  multiparty_enabled: true                   # Enable multiparty mode for multi-org networks
+  dataexchange_enabled: true                 # Enable data exchange for P2P communication
+  postgres_automigrate: true                 # Auto-migrate PostgreSQL database schema
+  sandbox_enabled: true                      # Enable sandbox UI for testing
+  ipfs_enabled: true                         # Enable IPFS for data sharing
+  external_dns_target: "46.62.234.169"      # IP address for External DNS A record
+
+  # Optional: Override default Fabric connection URLs
+  # If not specified, defaults will be generated based on org name and external_url_suffix
+  # fabric_peer_url: "grpcs://peer0.transporter1-net.pm3fraktal.se:443"
+  # fabric_orderer_url: "grpcs://orderer1.pm3org-net.pm3fraktal.se:443"
+  # fabric_ca_url: "https://ca.transporter1-net.pm3fraktal.se:443"
+
+# ===== FULL EXAMPLE =====
+# Here's how it looks in the complete network.yaml structure:
+
+# organizations:
+#   - organization:
+#       name: transporter1
+#       external_url_suffix: pm3fraktal.se
+#       # ... other organization config ...
+#
+#       services:
+#         peers:
+#           - peer:
+#               name: peer0
+#               # ... peer config ...
+#               chaincodes:
+#                 - name: "firefly-go"
+#                   version: "1"
+#                   # ... chaincode config ...
+#
+#       # ADD FIREFLY CONFIG HERE (at organization level, same indentation as 'services')
+#       firefly_config:
+#         enabled: true
+#         fabconnect_chaincode: "firefly-go"
+#         fabconnect_signer: "admin"
+#         fabconnect_retry: true
+#         multiparty_enabled: true
+#         dataexchange_enabled: true
+#         postgres_automigrate: true
+#         sandbox_enabled: true
+#         ipfs_enabled: true
+#         external_dns_target: "46.62.234.169"
+
+# ===== DEPLOYMENT URLS =====
+# With this configuration, the following URLs will be created for each organization:
+#
+# transporter1:
+#   - FireFly UI: http://firefly.transporter1-net.pm3fraktal.se
+#   - FireFly API: http://firefly.transporter1-net.pm3fraktal.se/api
+#   - Sandbox: http://firefly.transporter1-net.pm3fraktal.se/ui
+#
+# ombud1:
+#   - FireFly UI: http://firefly.ombud1-net.pm3fraktal.se
+#   - FireFly API: http://firefly.ombud1-net.pm3fraktal.se/api
+#   - Sandbox: http://firefly.ombud1-net.pm3fraktal.se/ui
+#
+# ===== PREREQUISITES =====
+# Before running deploy-firefly.sh:
+# 1. Fabric network must be deployed and running
+# 2. firefly-go chaincode must be installed and instantiated
+# 3. MSP credentials must exist in Vault at: secretsv2/local{orgname}/users/admin-msp
+# 4. Organization namespaces ({org}-net) must exist
+# 5. External DNS must be configured and running
+#
+# ===== DEPLOYMENT COMMAND =====
+# To deploy FireFly:
+#   bash deploy-firefly.sh
+#
+# This will:
+# 1. Validate network.yaml
+# 2. Sync MSP credentials from Vault to Kubernetes
+# 3. Generate Helm values files for each organization
+# 4. Push values to GitOps repository
+# 5. Wait for Flux to sync and deploy FireFly pods
+# 6. Create DNS records via External DNS

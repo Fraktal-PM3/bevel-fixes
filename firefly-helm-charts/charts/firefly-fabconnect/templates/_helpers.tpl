@@ -127,44 +127,50 @@ client:
       softVerify: true
       level: 256
   credentialStore:
-    path: {{ .Values.msp.mountPath }}/peerOrganizations/{{ .Values.fabric.organizationName }}/msp
+    path: {{ .Values.msp.mountPath }}/msp
     cryptoStore:
-      path: {{ .Values.msp.mountPath }}/peerOrganizations/{{ .Values.fabric.organizationName }}/msp
+      path: {{ .Values.msp.mountPath }}/msp
   cryptoconfig:
-    path: {{ .Values.msp.mountPath }}/peerOrganizations/{{ .Values.fabric.organizationName }}/msp
+    path: {{ .Values.msp.mountPath }}/msp
   tlsCerts:
     client:
       cert:
-        path: {{ .Values.msp.mountPath }}/peerOrganizations/{{ .Values.fabric.organizationName }}/users/Admin@{{ .Values.fabric.organizationName }}/msp/signcerts/cert.pem
+        path: {{ .Values.msp.mountPath }}/msp/signcerts/cert.pem
       key:
-        path: {{ .Values.msp.mountPath }}/peerOrganizations/{{ .Values.fabric.organizationName }}/users/Admin@{{ .Values.fabric.organizationName }}/msp/keystore/key.pem
+        path: {{ .Values.msp.mountPath }}/msp/keystore/key.pem
 
 organizations:
   {{ .Values.fabric.organizationName }}:
     mspid: {{ .Values.fabric.organizationMspId }}
-    cryptoPath: /tmp/msp
+    cryptoPath: {{ .Values.msp.mountPath }}/msp/users
     peers:
       - {{ .Values.fabric.organizationName }}_peer
     certificateAuthorities:
       - {{ .Values.fabric.organizationName }}_ca
+    users:
+      admin:
+        cert:
+          path: {{ .Values.msp.mountPath }}/msp/users/admin/msp/signcerts/cert.pem
+        key:
+          path: {{ .Values.msp.mountPath }}/msp/users/admin/msp/keystore/key.pem
 
 peers:
   {{ .Values.fabric.organizationName }}_peer:
     url: {{ .Values.fabric.peerUrl }}
     tlsCACerts:
-      path: {{ .Values.msp.mountPath }}/peerOrganizations/{{ .Values.fabric.organizationName }}/peers/peer0.{{ .Values.fabric.organizationName }}/tls/tlscacerts/tls-ca-{{ .Values.fabric.organizationName }}.pem
+      path: {{ .Values.msp.mountPath }}/msp/tlscacerts/tlsca.pem
 
 orderers:
   {{ .Values.fabric.organizationName }}_orderer:
     url: {{ .Values.fabric.ordererUrl }}
     tlsCACerts:
-      path: {{ .Values.msp.mountPath }}/ordererOrganizations/orderer/orderers/orderer0.orderer/tls/tlscacerts/tls-ca-orderer.pem
+      path: {{ .Values.msp.mountPath }}/msp/tlscacerts/tlsca.pem
 
 certificateAuthorities:
   {{ .Values.fabric.organizationName }}_ca:
     url: {{ .Values.fabric.caUrl }}
     tlsCACerts:
-      path: {{ .Values.msp.mountPath }}/peerOrganizations/{{ .Values.fabric.organizationName }}/msp/tlscacerts/ca.crt
+      path: {{ .Values.msp.mountPath }}/msp/cacerts/ca.pem
     registrar:
       enrollId: {{ .Values.fabric.enrollId }}
       enrollSecret: {{ .Values.fabric.enrollSecret }}

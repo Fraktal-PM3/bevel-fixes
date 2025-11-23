@@ -67,7 +67,7 @@ spec:
           {{- toYaml .Values.ipfs.securityContext | nindent 10 }}
         image: "{{ .Values.ipfs.image.repository }}:{{ .Values.ipfs.image.tag }}"
         imagePullPolicy: {{ .Values.ipfs.image.pullPolicy }}
-        command: ["/sbin/tini", "--", "/usr/local/bin/start_ipfs"]
+        command: ["ipfs", "daemon", "--migrate"]
         ports:
         - name: api
           containerPort: 5001
@@ -83,27 +83,41 @@ spec:
         {{- toYaml . | nindent 8 }}
         {{- end }}
         livenessProbe:
-          httpGet:
-            path: /api/v0/id
-            port: api
-            httpHeaders:
-            - name: Authorization
-              value: Basic {{ printf "%s:%s" .Values.ipfs.apiUsername .Values.ipfs.apiPassword | b64enc }}
+          exec:
+            command:
+            - ipfs
+            - --api=/ip4/127.0.0.1/tcp/5001
+            - dag
+            - stat
+            - /ipfs/QmUNLLsPACCz1vLxQVkXqqLX5R1X345qqfHbsf67hvA3Nn
           initialDelaySeconds: 30
-          periodSeconds: 10
-          timeoutSeconds: 5
-          failureThreshold: 6
+          periodSeconds: 30
+          timeoutSeconds: 3
+          failureThreshold: 3
         readinessProbe:
-          httpGet:
-            path: /api/v0/id
-            port: api
-            httpHeaders:
-            - name: Authorization
-              value: Basic {{ printf "%s:%s" .Values.ipfs.apiUsername .Values.ipfs.apiPassword | b64enc }}
+          exec:
+            command:
+            - ipfs
+            - --api=/ip4/127.0.0.1/tcp/5001
+            - dag
+            - stat
+            - /ipfs/QmUNLLsPACCz1vLxQVkXqqLX5R1X345qqfHbsf67hvA3Nn
           initialDelaySeconds: 15
           periodSeconds: 10
-          timeoutSeconds: 5
-          failureThreshold: 6
+          timeoutSeconds: 3
+          failureThreshold: 3
+        startupProbe:
+          exec:
+            command:
+            - ipfs
+            - --api=/ip4/127.0.0.1/tcp/5001
+            - dag
+            - stat
+            - /ipfs/QmUNLLsPACCz1vLxQVkXqqLX5R1X345qqfHbsf67hvA3Nn
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 30
         volumeMounts:
         - name: ipfs-data
           mountPath: /data/ipfs

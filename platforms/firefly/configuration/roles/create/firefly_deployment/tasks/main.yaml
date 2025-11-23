@@ -1,0 +1,40 @@
+---
+##############################################################################################
+#  Copyright Accenture. All Rights Reserved.
+#
+#  SPDX-License-Identifier: Apache-2.0
+##############################################################################################
+
+# This role creates Helm values for FireFly deployment
+# Each organization gets a unique FireFly instance with its own ingress URL
+
+# Create FireFly directory in releases
+- name: Create FireFly directory
+  file:
+    path: "{{ values_dir }}/firefly"
+    state: directory
+
+# Create FireFly Helm values file
+- name: Create FireFly Helm values file
+  template:
+    src: "firefly-values.yaml.j2"
+    dest: "{{ values_dir }}/firefly/firefly-values.yaml"
+
+# Git Push: Push the generated values file to GitOps repository
+- name: Git Push - FireFly values
+  include_role:
+    name: "{{ playbook_dir }}/../../shared/configuration/roles/git_push"
+  vars:
+    GIT_DIR: "{{ playbook_dir }}/../../../"
+    msg: "[ci skip] Pushing FireFly deployment files for {{ component }}"
+
+# Wait for FireFly pods to be running
+- name: "Waiting for FireFly pod in {{ component_ns }}"
+  include_role:
+    name: "{{ playbook_dir }}/../../shared/configuration/roles/check/helm_component"
+  vars:
+    component_type: "Pod"
+    namespace: "{{ component_ns }}"
+    component_name: "firefly"
+    label_selectors:
+      - app.kubernetes.io/name = firefly

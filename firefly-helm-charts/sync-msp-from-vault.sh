@@ -116,31 +116,40 @@ if [ -n "$VAULT_MSP_PATH" ]; then
 else
     # Try common path patterns
     ORG_NAME_LOWER=$(echo "$ORG_NAME" | tr '[:upper:]' '[:lower:]')
+    ORG_NAME_WITH_PREFIX="local${ORG_NAME_LOWER}"
 
-    # Pattern 1: peerOrganizations path
-    MSP_PATH="${VAULT_SECRET_PATH}/${NETWORK_TYPE}${ORG_NAME_LOWER}/peerOrganizations/${ORG_NAME_LOWER}/users/admin/msp"
+    # Pattern 1: Bevel local deployment pattern (most common)
+    MSP_PATH="${VAULT_SECRET_PATH}/${ORG_NAME_WITH_PREFIX}/users/admin-msp"
 
     # Check if path exists
     if ! vault kv get "$MSP_PATH" &> /dev/null; then
         log_warn "Path not found: $MSP_PATH"
 
-        # Pattern 2: Direct users path
+        # Pattern 2: Network type prefix pattern
         MSP_PATH="${VAULT_SECRET_PATH}/${NETWORK_TYPE}${ORG_NAME_LOWER}/users/admin-msp"
 
         if ! vault kv get "$MSP_PATH" &> /dev/null; then
             log_warn "Path not found: $MSP_PATH"
 
-            # Pattern 3: Without network type
+            # Pattern 3: Direct organization path
             MSP_PATH="${VAULT_SECRET_PATH}/${ORG_NAME_LOWER}/users/admin-msp"
 
             if ! vault kv get "$MSP_PATH" &> /dev/null; then
-                log_error "Cannot find MSP data in Vault. Tried:"
-                echo "  - ${VAULT_SECRET_PATH}/${NETWORK_TYPE}${ORG_NAME_LOWER}/peerOrganizations/${ORG_NAME_LOWER}/users/admin/msp"
-                echo "  - ${VAULT_SECRET_PATH}/${NETWORK_TYPE}${ORG_NAME_LOWER}/users/admin-msp"
-                echo "  - ${VAULT_SECRET_PATH}/${ORG_NAME_LOWER}/users/admin-msp"
-                echo ""
-                echo "Set VAULT_MSP_PATH environment variable to specify the exact path."
-                exit 1
+                log_warn "Path not found: $MSP_PATH"
+
+                # Pattern 4: peerOrganizations path (legacy)
+                MSP_PATH="${VAULT_SECRET_PATH}/${NETWORK_TYPE}${ORG_NAME_LOWER}/peerOrganizations/${ORG_NAME_LOWER}/users/admin/msp"
+
+                if ! vault kv get "$MSP_PATH" &> /dev/null; then
+                    log_error "Cannot find MSP data in Vault. Tried:"
+                    echo "  - ${VAULT_SECRET_PATH}/${ORG_NAME_WITH_PREFIX}/users/admin-msp"
+                    echo "  - ${VAULT_SECRET_PATH}/${NETWORK_TYPE}${ORG_NAME_LOWER}/users/admin-msp"
+                    echo "  - ${VAULT_SECRET_PATH}/${ORG_NAME_LOWER}/users/admin-msp"
+                    echo "  - ${VAULT_SECRET_PATH}/${NETWORK_TYPE}${ORG_NAME_LOWER}/peerOrganizations/${ORG_NAME_LOWER}/users/admin/msp"
+                    echo ""
+                    echo "Set VAULT_MSP_PATH environment variable to specify the exact path."
+                    exit 1
+                fi
             fi
         fi
     fi
@@ -152,6 +161,7 @@ log_info "Using Vault path: $MSP_PATH"
 TMP_DIR=$(mktemp -d)
 trap "rm -rf $TMP_DIR" EXIT
 
+# Create simple flat MSP structure
 MSP_DIR="$TMP_DIR/msp"
 mkdir -p "$MSP_DIR"/{admincerts,cacerts,keystore,signcerts,tlscacerts}
 
@@ -172,20 +182,17 @@ for component in "${COMPONENTS[@]}"; do
 
     # Determine filename based on component
     case $component in
-        admincerts)
-            FILENAME="Admin@${ORG_NAME_LOWER}-cert.pem"
+        admincerts|signcerts)
+            FILENAME="cert.pem"
             ;;
         cacerts)
-            FILENAME="ca-${ORG_NAME_LOWER}-cert.pem"
+            FILENAME="ca.pem"
             ;;
         tlscacerts)
-            FILENAME="tlsca-${ORG_NAME_LOWER}-cert.pem"
+            FILENAME="tlsca.pem"
             ;;
         keystore)
-            FILENAME="server.key"
-            ;;
-        signcerts)
-            FILENAME="server.crt"
+            FILENAME="key.pem"
             ;;
     esac
 
@@ -195,8 +202,8 @@ for component in "${COMPONENTS[@]}"; do
 done
 
 # Verify we have minimum required components
-if [ ! -f "$MSP_DIR/cacerts/"* ] || [ ! -f "$MSP_DIR/signcerts/"* ]; then
-    log_error "Missing required MSP components (cacerts or signcerts)"
+if [ ! -f "$MSP_DIR/cacerts/ca.pem" ] || [ ! -f "$MSP_DIR/signcerts/cert.pem" ] || [ ! -f "$MSP_DIR/keystore/key.pem" ]; then
+    log_error "Missing required MSP components (cacerts, signcerts, or keystore)"
     exit 1
 fi
 
@@ -220,12 +227,16 @@ if minikube kubectl -- get secret "$SECRET_NAME" -n "$NAMESPACE" &> /dev/null; t
     minikube kubectl -- delete secret "$SECRET_NAME" -n "$NAMESPACE"
 fi
 
-# Create Kubernetes secret from MSP directory
+# Create Kubernetes secret from the MSP directory
+# Files need to have __ separator for init container to process them
 log_info "Creating Kubernetes secret '$SECRET_NAME'..."
 minikube kubectl -- create secret generic "$SECRET_NAME" \
-    --from-file="$MSP_DIR" \
-    --namespace "$NAMESPACE" \
-    --dry-run=client -o yaml | minikube kubectl -- apply -f -
+    --from-file=admincerts__cert.pem="$MSP_DIR/admincerts/cert.pem" \
+    --from-file=cacerts__ca.pem="$MSP_DIR/cacerts/ca.pem" \
+    --from-file=keystore__key.pem="$MSP_DIR/keystore/key.pem" \
+    --from-file=signcerts__cert.pem="$MSP_DIR/signcerts/cert.pem" \
+    --from-file=tlscacerts__tlsca.pem="$MSP_DIR/tlscacerts/tlsca.pem" \
+    --namespace "$NAMESPACE"
 
 log_info "Secret created successfully"
 
@@ -238,7 +249,11 @@ minikube kubectl -- get secret "$SECRET_NAME" -n "$NAMESPACE" -o yaml | grep -E 
 
 echo ""
 echo "Secret data keys:"
-minikube kubectl -- get secret "$SECRET_NAME" -n "$NAMESPACE" -o json | jq -r '.data | keys[]'
+if minikube kubectl -- get secret "$SECRET_NAME" -n "$NAMESPACE" -o jsonpath='{.data}' | grep -q .; then
+    minikube kubectl -- describe secret "$SECRET_NAME" -n "$NAMESPACE" | grep -A 100 "^Data" | tail -n +2 | head -n 20
+else
+    echo "  (no data keys found)"
+fi
 
 echo ""
 echo "=========================================="
