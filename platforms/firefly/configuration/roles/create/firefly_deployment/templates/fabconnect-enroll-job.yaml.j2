@@ -51,13 +51,13 @@ spec:
             - |
               set -e
               FABCONNECT_URL="http://firefly-fabconnect.{{ component_ns }}.svc:3000"
-              IDENTITY_NAME="{{ item.name }}"
+              IDENTITY_NAME="{{ component }}"
               NAMESPACE="{{ component_ns }}"
 
               echo "===== FireFly Fabconnect Identity Enrollment ====="
               echo "Identity Name: $IDENTITY_NAME"
               echo "Fabconnect URL: $FABCONNECT_URL"
-              echo "Organization: {{ item.name }}"
+              echo "Organization: {{ component }}"
               echo "=================================================="
 
               echo "Waiting for fabconnect to be ready at $FABCONNECT_URL..."
