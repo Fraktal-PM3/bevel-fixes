@@ -17,21 +17,22 @@
     set -e
     cd "{{ GIT_DIR }}"
     echo "=============== GIT PUSH (SSH) ==============="
+    echo "Working directory: $(pwd)"
     export GIT_SSH_COMMAND='ssh -i {{ gitops.private_key }}'
     git config user.email {{ gitops.email }}
     git config user.name {{ gitops.username }}
 
     echo "→ Pulling latest changes..."
-    git --git-dir={{ GIT_DIR }}/.git pull
+    git pull
 
     echo "→ Staging files..."
-    git --git-dir={{ GIT_DIR }}/.git add -A .
+    git add -A .
 
     echo "→ Committing changes..."
-    if git --git-dir={{ GIT_DIR }}/.git commit -s -m "{{ msg }}"; then
+    if git commit -s -m "{{ msg }}"; then
       echo "✓ Changes committed successfully"
       echo "→ Pushing to {{ gitops.branch }}..."
-      if git --git-dir={{ GIT_DIR }}/.git push {{ gitops.git_url }} HEAD:{{ gitops.branch }}; then
+      if git push {{ gitops.git_url }} HEAD:{{ gitops.branch }}; then
         echo "✓ Changes pushed to {{ gitops.branch }} successfully"
         echo "=============================================="
       else
@@ -55,20 +56,21 @@
     set -e
     cd "{{ GIT_DIR }}"
     echo "=============== GIT PUSH (HTTPS) ==============="
+    echo "Working directory: $(pwd)"
     git config user.email {{ gitops.email }}
     git config user.name {{ gitops.username }}
 
     echo "→ Pulling latest changes..."
-    git --git-dir={{ GIT_DIR }}/.git pull
+    git pull
 
     echo "→ Staging files..."
-    git --git-dir={{ GIT_DIR }}/.git add -A .
+    git add -A .
 
     echo "→ Committing changes..."
-    if git --git-dir={{ GIT_DIR }}/.git commit -s -m "{{ msg }}"; then
+    if git commit -s -m "{{ msg }}"; then
       echo "✓ Changes committed successfully"
       echo "→ Pushing to {{ gitops.branch }}..."
-      if git --git-dir={{ GIT_DIR }}/.git push https://{{ gitops.username }}:{{ gitops.password }}@{{ gitops.git_repo }} HEAD:{{ gitops.branch }}; then
+      if git push https://{{ gitops.username }}:{{ gitops.password }}@{{ gitops.git_repo }} HEAD:{{ gitops.branch }}; then
         echo "✓ Changes pushed to {{ gitops.branch }} successfully"
         echo "================================================"
       else
