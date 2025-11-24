@@ -25,7 +25,7 @@ spec:
           args:
             - |
               set -e
-              CA_URL="{{ item.firefly_config.fabric_ca_url | default('https://ca.' + component + '.' + item.external_url_suffix + ':443') }}"
+              CA_URL="https://ca.{{ component_ns }}.{{ external_url_suffix }}:443"
               echo "Checking Fabric CA availability at $CA_URL..."
 
               MAX_RETRIES=60
