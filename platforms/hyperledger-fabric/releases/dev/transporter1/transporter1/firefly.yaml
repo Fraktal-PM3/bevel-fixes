@@ -157,5 +157,6 @@ spec:
     # IPFS
     ipfs:
       enabled: True
-          swarmSecretName: "ipfs-swarm-key"
+      swarmSecretName: "ipfs-swarm-key"
     
+
