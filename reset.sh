@@ -33,12 +33,12 @@ else
   echo "FireFly cleanup playbook not found, skipping..."
 fi
 
-# echo "=========================================="
-# echo "Resetting Fabric Network..."
-# echo "=========================================="
+echo "=========================================="
+echo "Resetting Fabric Network..."
+echo "=========================================="
 
-# exec ansible-playbook -vv /home/hedlund01/bevel-fixes/platforms/shared/configuration/site.yaml \
-#   --inventory-file=/home/hedlund01/bevel-fixes/platforms/shared/inventory/ \
-#   -e "@/home/hedlund01/bevel-fixes/build/network.yaml" \
-#   -e 'ansible_python_interpreter=/usr/bin/python3' \
-#   -e "reset='true'"
+exec ansible-playbook -vv /home/hedlund01/bevel-fixes/platforms/shared/configuration/site.yaml \
+  --inventory-file=/home/hedlund01/bevel-fixes/platforms/shared/inventory/ \
+  -e "@/home/hedlund01/bevel-fixes/build/network.yaml" \
+  -e 'ansible_python_interpreter=/usr/bin/python3' \
+  -e "reset='true'"
