@@ -22,6 +22,43 @@
     GIT_DIR: "{{ playbook_dir }}/../../../"
     msg: "[ci skip] Pushing FireFly deployment files for {{ component }}"
 
+# Wait for Fabconnect to be ready before creating enrollment job
+- name: "Waiting for Fabconnect pod in {{ component_ns }}"
+  include_role:
+    name: "{{ playbook_dir }}/../../shared/configuration/roles/check/helm_component"
+  vars:
+    component_type: "Pod"
+    namespace: "{{ component_ns }}"
+    component_name: "firefly-fabconnect"
+    label_selectors:
+      - app.kubernetes.io/name = firefly-fabconnect
+  when: item.firefly_config.enabled is defined and item.firefly_config.enabled == true
+
+# Create Fabconnect enrollment job manifest
+- name: Create Fabconnect enrollment job manifest
+  template:
+    src: "fabconnect-enroll-job.yaml.j2"
+    dest: "{{ values_dir }}/{{ component }}/fabconnect-enroll-job.yaml"
+  when: item.firefly_config.enabled is defined and item.firefly_config.enabled == true
+
+# Apply enrollment job directly to cluster
+- name: Apply Fabconnect enrollment job
+  kubernetes.core.k8s:
+    kubeconfig: "{{ item.k8s.config_file }}"
+    state: present
+    src: "{{ values_dir }}/{{ component }}/fabconnect-enroll-job.yaml"
+  when: item.firefly_config.enabled is defined and item.firefly_config.enabled == true
+
+# Wait for enrollment job to complete
+- name: "Waiting for enrollment job to complete in {{ component_ns }}"
+  include_role:
+    name: "{{ playbook_dir }}/../../shared/configuration/roles/check/helm_component"
+  vars:
+    component_type: "Job"
+    namespace: "{{ component_ns }}"
+    component_name: "firefly-fabconnect-enroll-identity"
+  when: item.firefly_config.enabled is defined and item.firefly_config.enabled == true
+
 # Wait for FireFly pods to be running
 - name: "Waiting for FireFly pod in {{ component_ns }}"
   include_role:
