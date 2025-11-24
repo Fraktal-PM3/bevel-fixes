@@ -49,6 +49,14 @@
     src: "{{ values_dir }}/{{ component }}/fabconnect-enroll-job.yaml"
   when: firefly_config is defined and firefly_config.enabled == true
 
+# Git Push: Push the generated job file to GitOps repository
+- name: Git Push - Enrollment Job
+  include_role:
+    name: "{{ playbook_dir }}/../../shared/configuration/roles/git_push"
+  vars:
+    GIT_DIR: "{{ playbook_dir }}/../../../"
+    msg: "[ci skip] Pushing FireFly deployment files for {{ component }}"
+
 # Wait for enrollment job to complete
 - name: "Waiting for enrollment job to complete in {{ component_ns }}"
   include_role:
