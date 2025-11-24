@@ -27,6 +27,7 @@
         kubernetes: "{{ org.k8s }}"
         vault: "{{ org.vault }}"
         gitops: "{{ org.gitops }}"
+        firefly_config: "{{ org.firefly_config }}"
       loop: "{{ network['organizations'] }}"
       loop_control:
         loop_var: org

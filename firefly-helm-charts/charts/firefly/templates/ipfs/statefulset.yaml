@@ -53,16 +53,14 @@ spec:
             ipfs init --profile={{ .Values.ipfs.profile }}
             ipfs config Addresses.API /ip4/0.0.0.0/tcp/5001
             ipfs config Addresses.Gateway /ip4/0.0.0.0/tcp/8080
-{{- if .Values.ipfs.swarmKey }}
-cat > /data/ipfs/swarm.key <<'EOF'
-{{ .Values.ipfs.swarmKey | trimSuffix "\n" }}
-EOF
-            ipfs bootstrap rm --all
-{{- end }}
           fi
         volumeMounts:
         - name: ipfs-data
           mountPath: /data/ipfs
+        - name: swarm-key
+          mountPath: /data/ipfs/swarm.key
+          subPath: swarm.key
+          readOnly: true
       containers:
       - name: ipfs
         securityContext:
@@ -123,6 +121,10 @@ EOF
         volumeMounts:
         - name: ipfs-data
           mountPath: /data/ipfs
+        - name: swarm-key
+          mountPath: /data/ipfs/swarm.key
+          subPath: swarm.key
+          readOnly: true
         resources:
           {{- toYaml .Values.ipfs.resources | nindent 10 }}
       {{- with .Values.ipfs.nodeSelector }}
@@ -137,6 +139,13 @@ EOF
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+{{- if .Values.ipfs.swarmSecretName }}
+      volumes:
+      - name: swarm-key
+        secret:
+          secretName: {{ .Values.ipfs.swarmSecretName }}
+          optional: false
+{{- end }}
   volumeClaimTemplates:
   - metadata:
       name: ipfs-data

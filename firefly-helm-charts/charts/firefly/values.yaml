@@ -845,8 +845,11 @@ ipfs:
   profile: server
 
   # Optional: Swarm key for private IPFS network
-  # Format: /key/swarm/psk/1.0.0/\n/base16/\n<64 character hex key>
-  swarmKey: ""
+  # Optional: Kubernetes Secret name that contains the swarm key file.
+  # If set, the chart will mount that Secret's `swarm.key` entry into the pod
+  # at `/data/ipfs/swarm.key` and the init-container will use that file.
+  # Example: swarmSecretName: ipfs-swarm-key
+  swarmSecretName: ""
 
   # API authentication credentials
   apiUsername: ""

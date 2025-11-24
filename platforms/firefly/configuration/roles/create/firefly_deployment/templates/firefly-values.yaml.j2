@@ -142,4 +142,8 @@ postgres:
 # IPFS
 ipfs:
   enabled: {{ firefly_config.ipfs_enabled | default(true) }}
-  swarmKey: "{{ firefly_config.ipfs_swarm_key | default('') }}"
+{% if firefly_config.ipfs_swarm_key is defined and firefly_config.ipfs_swarm_key %}
+  swarmSecretName: "ipfs-swarm-key"
+{% else %}
+  swarmSecretName: ""
+{% endif %}
