@@ -103,7 +103,8 @@ spec:
                 exit 1
               fi
 
-              echo "Secret extracted successfully (length: ${#SECRET})"
+              SECRET_LENGTH=$(echo "$SECRET" | wc -c)
+              echo "Secret extracted successfully (length: $SECRET_LENGTH)"
 
               echo "Enrolling identity '$IDENTITY_NAME' with secret..."
               ENROLL_RESPONSE=$(curl -sf -X POST $FABCONNECT_URL/identities/$IDENTITY_NAME/enroll \
