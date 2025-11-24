@@ -22,7 +22,12 @@ firefly_config:
   external_dns_target: "46.62.234.169"      # IP address for External DNS A record
 
   # Optional: Override default Fabric connection URLs
-  # If not specified, defaults will be generated based on org name and external_url_suffix
+  # If not specified, defaults use internal Kubernetes service names:
+  #   - peer: grpcs://peer0.{org}-net.svc.cluster.local:7051
+  #   - orderer: grpcs://orderer1.pm3org-net.svc.cluster.local:7050
+  #   - ca: https://ca.{org}-net.svc.cluster.local:7054
+  #
+  # Only override these if connecting to external Fabric network:
   # fabric_peer_url: "grpcs://peer0.transporter1-net.pm3fraktal.se:443"
   # fabric_orderer_url: "grpcs://orderer1.pm3org-net.pm3fraktal.se:443"
   # fabric_ca_url: "https://ca.transporter1-net.pm3fraktal.se:443"

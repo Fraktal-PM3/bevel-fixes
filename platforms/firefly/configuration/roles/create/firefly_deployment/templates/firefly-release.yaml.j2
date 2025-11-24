@@ -69,10 +69,11 @@ spec:
         autoEnrollIdentity: "{{ component }}"
 
       # Fabric network connection details
+      # Use internal Kubernetes service names for in-cluster communication
       fabric:
-        peerUrl: "{{ firefly_config.fabric_peer_url | default('grpcs://peer0.' + component + '-net.' + external_url_suffix + ':443') }}"
-        ordererUrl: "{{ firefly_config.fabric_orderer_url | default('grpcs://orderer1.pm3org-net.' + external_url_suffix + ':443') }}"
-        caUrl: "{{ firefly_config.fabric_ca_url | default('https://ca.' + component + '-net.' + external_url_suffix + ':443') }}"
+        peerUrl: "{{ firefly_config.fabric_peer_url | default('grpcs://peer0.' + component + '-net.svc.cluster.local:7051') }}"
+        ordererUrl: "{{ firefly_config.fabric_orderer_url | default('grpcs://orderer1.pm3org-net.svc.cluster.local:7050') }}"
+        caUrl: "{{ firefly_config.fabric_ca_url | default('https://ca.' + component + '-net.svc.cluster.local:7054') }}"
 
         # Organization details
         organizationName: "{{ component }}-net"
