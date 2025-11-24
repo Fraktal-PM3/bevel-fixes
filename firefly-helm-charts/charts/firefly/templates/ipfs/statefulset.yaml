@@ -53,6 +53,33 @@ spec:
             ipfs init --profile={{ .Values.ipfs.profile }}
             ipfs config Addresses.API /ip4/0.0.0.0/tcp/5001
             ipfs config Addresses.Gateway /ip4/0.0.0.0/tcp/8080
+
+            # Clear default bootstrap nodes for private network
+            ipfs bootstrap rm --all
+
+            # Enable mDNS for local peer discovery in private network
+            ipfs config --json Discovery.MDNS.Enabled true
+
+            {{- if .Values.ipfs.swarmSecretName }}
+            # Clear address filters for private network in Kubernetes
+            # Default filters block private IP ranges (10.x.x.x, 172.16.x.x, 192.168.x.x)
+            # which prevents IPFS nodes from connecting within the cluster
+            ipfs config --json Swarm.AddrFilters '[]'
+            {{- end }}
+
+            {{- if .Values.ipfs.peers }}
+            # Add static peering configuration for private network
+            # Note: Peers list should contain full multiaddrs with peer IDs
+            # Example: /dns4/firefly-ipfs.namespace.svc.cluster.local/tcp/4001/p2p/12D3KooW...
+            echo '{"Peers": [' > /tmp/peers.json
+            {{- $last := last .Values.ipfs.peers }}
+            {{- range .Values.ipfs.peers }}
+            echo '{"Addrs": ["{{ . }}"]}{{ if ne . $last }},{{ end }}' >> /tmp/peers.json
+            {{- end }}
+            echo ']}' >> /tmp/peers.json
+            ipfs config --json Peering "$(cat /tmp/peers.json)"
+            rm /tmp/peers.json
+            {{- end }}
           fi
         volumeMounts:
         - name: ipfs-data

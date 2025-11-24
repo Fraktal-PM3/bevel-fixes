@@ -15,6 +15,10 @@ firefly_config:
   sandbox_enabled: true                      # Enable sandbox UI for testing
   ipfs_enabled: true                         # Enable IPFS for data sharing
   ipfs_swarm_key: ""                         # Optional: IPFS swarm key for private network (shared across all orgs)
+  ipfs_peers: []                             # Optional: List of IPFS peer multiaddrs for private network
+                                             # Example:
+                                             #   - "/dns4/firefly-ipfs.ombud1-net.svc.cluster.local/tcp/4001/p2p/12D3KooWMtd8L6U9PnEbGR8JTuPvVNQHHrCdwx5R55z9XgJBdACF"
+                                             #   - "/dns4/firefly-ipfs.ombud2-net.svc.cluster.local/tcp/4001/p2p/12D3KooWQg33TnbRYeYNTXbVqNqG31Twgok2M6h3n3myGnRgQRRC"
   external_dns_target: "46.62.234.169"      # IP address for External DNS A record
 
   # Optional: Override default Fabric connection URLs

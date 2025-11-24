@@ -162,3 +162,11 @@ spec:
 {% else %}
       swarmSecretName: ""
 {% endif %}
+{% if firefly_config.ipfs_peers is defined and firefly_config.ipfs_peers %}
+      peers:
+{% for peer in firefly_config.ipfs_peers %}
+        - "{{ peer }}"
+{% endfor %}
+{% else %}
+      peers: []
+{% endif %}

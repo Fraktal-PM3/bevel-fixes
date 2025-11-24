@@ -851,6 +851,15 @@ ipfs:
   # Example: swarmSecretName: ipfs-swarm-key
   swarmSecretName: ""
 
+  # Optional: Peering configuration for private IPFS networks
+  # When using a swarm key, IPFS nodes need explicit peer addresses to connect
+  # Format: list of peer multiaddrs
+  # Example:
+  # peers:
+  #   - /dns4/firefly-ipfs.transporter1-net.svc.cluster.local/tcp/4001/p2p/12D3KooW...
+  #   - /dns4/firefly-ipfs.ombud1-net.svc.cluster.local/tcp/4001/p2p/12D3KooW...
+  peers: []
+
   # API authentication credentials
   apiUsername: ""
   apiPassword: ""
