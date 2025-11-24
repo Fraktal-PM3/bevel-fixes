@@ -31,7 +31,7 @@
     namespace: "{{ component_ns }}"
     component_name: "firefly-fabconnect"
     label_selectors:
-      - app.kubernetes.io/name = firefly-fabconnect
+      - app.kubernetes.io/name = fabconnect
   when: firefly_config is defined and firefly_config.enabled == true
 
 # Create Fabconnect enrollment job manifest
