@@ -34,6 +34,8 @@
       echo "→ Pushing to {{ gitops.branch }}..."
       if git push {{ gitops.git_url }} HEAD:{{ gitops.branch }}; then
         echo "✓ Changes pushed to {{ gitops.branch }} successfully"
+        echo "→ Updating local tracking branch..."
+        git fetch origin {{ gitops.branch }}:{{ gitops.branch }} 2>/dev/null || true
         echo "=============================================="
       else
         echo "✗ ERROR: Git push failed!"
@@ -72,6 +74,8 @@
       echo "→ Pushing to {{ gitops.branch }}..."
       if git push https://{{ gitops.username }}:{{ gitops.password }}@{{ gitops.git_repo }} HEAD:{{ gitops.branch }}; then
         echo "✓ Changes pushed to {{ gitops.branch }} successfully"
+        echo "→ Updating local tracking branch..."
+        git fetch origin {{ gitops.branch }}:{{ gitops.branch }} 2>/dev/null || true
         echo "================================================"
       else
         echo "✗ ERROR: Git push failed!"
