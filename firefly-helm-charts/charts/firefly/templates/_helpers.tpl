@@ -539,7 +539,7 @@ namespaces:
               chaincode: {{ .Values.config.fireflyChaincode }}
               channel: {{ .Values.config.fabconnectChannel }}
               {{- end }}
-            firstEvent: ""
+            firstEvent: {{ .Values.config.fireflyContractFirstEvent | quote }}
           {{- if .Values.config.fireflyContracts }}
           {{- range .Values.config.fireflyContracts }}
           - location:
