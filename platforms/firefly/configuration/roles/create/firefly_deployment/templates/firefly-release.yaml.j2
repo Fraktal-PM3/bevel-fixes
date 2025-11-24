@@ -43,6 +43,13 @@ spec:
       # Multiparty configuration
       multipartyEnabled: {{ firefly_config.multiparty_enabled | default(true) }}
 
+      # Configure FireFly contracts with starting block
+      # This ensures all nodes, regardless of when they join, start from the same block
+      fireflyContracts:
+        - chaincode: "{{ firefly_config.fabconnect_chaincode }}"
+          channel: "{{ fabric_channel }}"
+          firstEvent: "{{ firefly_config.first_event_block | default('0') }}"
+
     # Data exchange configuration for peer-to-peer communication
     dataexchange:
       enabled: {{ firefly_config.dataexchange_enabled | default(true) }}
