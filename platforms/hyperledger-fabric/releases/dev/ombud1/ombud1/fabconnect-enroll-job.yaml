@@ -1,0 +1,128 @@
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: firefly-fabconnect-enroll-identity
+  namespace: ombud1-net
+  labels:
+    app.kubernetes.io/name: firefly-fabconnect
+    app: firefly-fabconnect-enroll-identity
+    app.kubernetes.io/instance: firefly
+    app.kubernetes.io/component: identity-enrollment
+spec:
+  backoffLimit: 10
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: firefly-fabconnect
+        app: firefly-fabconnect-enroll-identity
+        app.kubernetes.io/instance: firefly
+        app.kubernetes.io/component: identity-enrollment
+    spec:
+      restartPolicy: OnFailure
+      initContainers:
+        - name: wait-for-ca
+          image: curlimages/curl:latest
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              set -e
+              CA_URL="https://ca.ombud1-net.pm3fraktal.se:443"
+              echo "Checking Fabric CA availability at $CA_URL..."
+
+              MAX_RETRIES=60
+              RETRY_COUNT=0
+              SLEEP_TIME=5
+
+              until curl -skf $CA_URL/cainfo > /dev/null 2>&1; do
+                RETRY_COUNT=$((RETRY_COUNT + 1))
+                if [ $RETRY_COUNT -ge $MAX_RETRIES ]; then
+                  echo "ERROR: Fabric CA not available after $MAX_RETRIES attempts"
+                  exit 1
+                fi
+                echo "CA not ready yet, waiting... (attempt $RETRY_COUNT/$MAX_RETRIES)"
+                sleep $SLEEP_TIME
+              done
+
+              echo "Fabric CA is available!"
+      containers:
+        - name: enroll-identity
+          image: curlimages/curl:latest
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              set -e
+              FABCONNECT_URL="http://firefly-fabconnect.ombud1-net.svc:3000"
+              IDENTITY_NAME="ombud1"
+              NAMESPACE="ombud1-net"
+
+              echo "===== FireFly Fabconnect Identity Enrollment ====="
+              echo "Identity Name: $IDENTITY_NAME"
+              echo "Fabconnect URL: $FABCONNECT_URL"
+              echo "Organization: ombud1"
+              echo "=================================================="
+
+              echo "Waiting for fabconnect to be ready at $FABCONNECT_URL..."
+              MAX_RETRIES=60
+              RETRY_COUNT=0
+              SLEEP_TIME=5
+
+              until curl -sf $FABCONNECT_URL/status > /dev/null 2>&1; do
+                RETRY_COUNT=$((RETRY_COUNT + 1))
+                if [ $RETRY_COUNT -ge $MAX_RETRIES ]; then
+                  echo "ERROR: Fabconnect did not become ready after $MAX_RETRIES attempts"
+                  exit 1
+                fi
+                echo "Fabconnect not ready yet, waiting... (attempt $RETRY_COUNT/$MAX_RETRIES)"
+                sleep $SLEEP_TIME
+              done
+              echo "Fabconnect is ready!"
+
+              echo "Checking if identity '$IDENTITY_NAME' exists..."
+              if curl -sf $FABCONNECT_URL/identities/$IDENTITY_NAME > /dev/null 2>&1; then
+                echo "Identity '$IDENTITY_NAME' already exists, verifying enrollment..."
+
+                # Verify the identity is actually enrolled and usable
+                IDENTITY_INFO=$(curl -sf $FABCONNECT_URL/identities/$IDENTITY_NAME)
+                echo "Identity info: $IDENTITY_INFO"
+                echo "Identity '$IDENTITY_NAME' is enrolled and ready"
+                exit 0
+              fi
+
+              echo "Registering identity '$IDENTITY_NAME'..."
+              RESPONSE=$(curl -sf -X POST $FABCONNECT_URL/identities \
+                -H "Content-Type: application/json" \
+                -d "{\"name\":\"$IDENTITY_NAME\",\"type\":\"client\",\"maxEnrollments\":-1}")
+
+              echo "Registration response: $RESPONSE"
+
+              # Extract secret using sed (more portable than grep -P)
+              SECRET=$(echo "$RESPONSE" | sed -n 's/.*"secret":"\([^"]*\)".*/\1/p')
+
+              if [ -z "$SECRET" ]; then
+                echo "ERROR: Failed to get secret for identity enrollment"
+                echo "Response was: $RESPONSE"
+                exit 1
+              fi
+
+              SECRET_LENGTH=$(echo "$SECRET" | wc -c)
+              echo "Secret extracted successfully (length: $SECRET_LENGTH)"
+
+              echo "Enrolling identity '$IDENTITY_NAME' with secret..."
+              ENROLL_RESPONSE=$(curl -sf -X POST $FABCONNECT_URL/identities/$IDENTITY_NAME/enroll \
+                -H "Content-Type: application/json" \
+                -d "{\"secret\":\"$SECRET\"}")
+
+              echo "Enrollment response: $ENROLL_RESPONSE"
+
+              # Verify enrollment was successful
+              echo "Verifying enrollment..."
+              sleep 2
+
+              if ! curl -sf $FABCONNECT_URL/identities/$IDENTITY_NAME > /dev/null 2>&1; then
+                echo "ERROR: Identity verification failed after enrollment"
+                exit 1
+              fi
+
+              echo "Identity '$IDENTITY_NAME' enrollment verified successfully!"
+              echo "===== Enrollment Complete ====="
