@@ -65,6 +65,8 @@
     component_type: "Job"
     namespace: "{{ component_ns }}"
     component_name: "firefly-fabconnect-enroll-identity"
+    label_selectors:
+      - app = firefly-fabconnect-enroll-identity
   when: firefly_config is defined and firefly_config.enabled == true
 
 # Wait for FireFly pods to be running

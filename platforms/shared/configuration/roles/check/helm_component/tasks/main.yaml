@@ -14,8 +14,7 @@
     namespace: "{{ namespace }}"
     kubeconfig: "{{ kubernetes.config_file }}"
     context: "{{ kubernetes.context }}"
-    label_selectors:
-      - "app = {{ component_name }}"
+    label_selectors: "{{ label_selectors | default(['app = ' + component_name]) }}"
   register: component_data
   retries: "{{ network.env.retry_count }}"
   delay: 30
