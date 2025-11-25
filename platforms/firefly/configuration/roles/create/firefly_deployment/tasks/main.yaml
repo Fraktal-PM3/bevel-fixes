@@ -22,42 +22,9 @@
     GIT_DIR: "{{ playbook_dir }}/../../../"
     msg: "[ci skip] Pushing FireFly deployment files for {{ component }}"
 
-# Wait for Fabconnect to be ready before creating enrollment job
-- name: "Waiting for Fabconnect pod in {{ component_ns }}"
-  include_role:
-    name: "{{ playbook_dir }}/../../shared/configuration/roles/check/helm_component"
-  vars:
-    component_type: "Pod"
-    namespace: "{{ component_ns }}"
-    component_name: "firefly-fabconnect"
-    label_selectors:
-      - app.kubernetes.io/name = fabconnect
-  when: firefly_config is defined and firefly_config.enabled == true
-
-# Create Fabconnect enrollment job manifest
-- name: Create Fabconnect enrollment job manifest
-  template:
-    src: "fabconnect-enroll-job.yaml.j2"
-    dest: "{{ values_dir }}/{{ component }}/fabconnect-enroll-job.yaml"
-  when: firefly_config is defined and firefly_config.enabled == true
-
-# Apply enrollment job directly to cluster
-- name: Apply Fabconnect enrollment job
-  kubernetes.core.k8s:
-    kubeconfig: "{{ kubernetes.config_file }}"
-    state: present
-    src: "{{ values_dir }}/{{ component }}/fabconnect-enroll-job.yaml"
-  when: firefly_config is defined and firefly_config.enabled == true
-
-# Git Push: Push the generated job file to GitOps repository
-- name: Git Push - Enrollment Job
-  include_role:
-    name: "{{ playbook_dir }}/../../shared/configuration/roles/git_push"
-  vars:
-    GIT_DIR: "{{ playbook_dir }}/../../../"
-    msg: "[ci skip] Pushing FireFly deployment files for {{ component }}"
-
 # Wait for enrollment job to complete
+# Note: The enrollment job is created automatically by the Helm chart as a post-install hook
+# when autoEnrollIdentity is configured in the firefly-fabconnect subchart values
 - name: "Waiting for enrollment job to complete in {{ component_ns }}"
   include_role:
     name: "{{ playbook_dir }}/../../shared/configuration/roles/check/helm_component"
