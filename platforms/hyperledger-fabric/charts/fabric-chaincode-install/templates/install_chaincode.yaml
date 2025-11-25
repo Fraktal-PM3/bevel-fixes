@@ -232,17 +232,21 @@ spec:
             # Install Node.js dependencies
             echo "Installing Node.js dependencies..."
             cd $GOPATH/src/github.com/chaincode/${CHAINCODE_NAME}
-            
+
             # Check if package.json exists and install dependencies
             if [ -f "package.json" ]; then
               echo "Running npm install..."
               npm install
-              
-              # Build TypeScript if tsconfig.json exists
-              if [ -f "tsconfig.json" ]; then
-                echo "TypeScript project detected, running build..."
-                npm run build || echo "No build script found or build failed, continuing..."
+
+              # Replace hardcoded MSP ID for pm3roleauth chaincode
+              if [ "${CHAINCODE_NAME}" = "pm3roleauth" ] && [ -f "src/roleAuthContract.ts" ]; then
+                echo "Replacing Org1MSP with pm3orgMSP in roleAuthContract.ts..."
+                sed -i 's/Org1MSP/pm3orgMSP/g' src/roleAuthContract.ts
               fi
+
+              # Run npm package script
+              echo "Running npm run package..."
+              npm run package
             fi
 
             #chaincode path - use current directory if CHAINCODE_MAINDIR is ".", otherwise append it
