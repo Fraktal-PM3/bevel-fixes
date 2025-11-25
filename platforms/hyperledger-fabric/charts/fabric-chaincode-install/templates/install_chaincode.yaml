@@ -259,14 +259,12 @@ spec:
                 sed -i 's/Org1MSP/pm3orgMSP/g' src/roleAuthContract.ts
               fi
 
-              # Use npm ci for clean install if package-lock.json exists, otherwise npm install
-              if [ -f "package-lock.json" ]; then
-                echo "Running npm ci for clean install..."
-                npm ci
-              else
-                echo "Running npm install..."
-                npm install
-              fi
+              # Always run npm install
+              echo "Running npm install..."
+              npm install
+
+              echo "Npm CI"
+              npm ci
 
               # Run npm package script
               echo "Running npm run package..."
