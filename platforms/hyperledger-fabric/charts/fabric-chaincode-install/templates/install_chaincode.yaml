@@ -225,6 +225,24 @@ spec:
             echo $CC_SRC_PATH
           elif [ ${CC_RUNTIME_LANGUAGE} = "node" ]
           then
+            ## Install Node.js and npm
+            echo "Installing Node.js and npm..."
+            if [ "$version2_5" = "1" ]; then
+              # For Ubuntu-based images
+              packages_to_install="nodejs npm"
+              install_packages "$packages_to_install"
+            else
+              # For Alpine-based images
+              packages_to_install="nodejs npm"
+              install_packages "$packages_to_install"
+            fi
+
+            # Verify Node.js and npm are installed
+            echo "Verifying Node.js installation..."
+            node --version
+            echo "Verifying npm installation..."
+            npm --version
+
             ## Copying desired chaincode to a location relative to $GOPATH/src
             mkdir -p $GOPATH/src/github.com/chaincode/${CHAINCODE_NAME}
             cp -R /tmp/chaincode/{{ $.Values.chaincode.repository.path }}/* $GOPATH/src/github.com/chaincode/${CHAINCODE_NAME}/
@@ -235,13 +253,19 @@ spec:
 
             # Check if package.json exists and install dependencies
             if [ -f "package.json" ]; then
-              echo "Running npm install..."
-              npm install
-
               # Replace hardcoded MSP ID for pm3roleauth chaincode
               if [ "${CHAINCODE_NAME}" = "pm3roleauth" ] && [ -f "src/roleAuthContract.ts" ]; then
                 echo "Replacing Org1MSP with pm3orgMSP in roleAuthContract.ts..."
                 sed -i 's/Org1MSP/pm3orgMSP/g' src/roleAuthContract.ts
+              fi
+
+              # Use npm ci for clean install if package-lock.json exists, otherwise npm install
+              if [ -f "package-lock.json" ]; then
+                echo "Running npm ci for clean install..."
+                npm ci
+              else
+                echo "Running npm install..."
+                npm install
               fi
 
               # Run npm package script
