@@ -274,6 +274,12 @@ spec:
                 sed -i 's/Org1MSP/pm3orgMSP/g' src/roleAuthContract.ts
               fi
 
+              # Replace hardcoded MSP ID for pm3package chaincode
+              if [ "${CHAINCODE_NAME}" = "pm3package" ] && [ -f "src/packageContract.ts" ]; then
+                echo "Replacing Org1MSP with pm3orgMSP in packageContract.ts..."
+                sed -i 's/Org1MSP/pm3orgMSP/g' src/packageContract.ts
+              fi
+
               # Always run npm install
               echo "Running npm install..."
               npm install
