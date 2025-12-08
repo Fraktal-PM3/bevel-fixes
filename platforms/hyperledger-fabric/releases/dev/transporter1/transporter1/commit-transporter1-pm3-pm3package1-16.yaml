@@ -1,0 +1,73 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: commit-transporter1-pm3-pm3package1-16
+  namespace: transporter1-net
+  annotations:
+    fluxcd.io/automated: "false"
+spec:
+  interval: 1m
+  releaseName: commit-transporter1-pm3-pm3package1-16
+  chart:
+    spec:
+      interval: 1m
+      sourceRef:
+        kind: GitRepository
+        name: flux-local
+        namespace: flux-local
+      chart: platforms/hyperledger-fabric/charts/fabric-chaincode-commit
+  values:
+    metadata:
+      namespace: transporter1-net
+      network:
+        version: 2.5.4
+      images:
+        fabrictools: ghcr.io/hyperledger/bevel-fabric-tools:2.5.4
+        alpineutils: ghcr.io/hyperledger/bevel-alpine:latest
+
+    peer:
+      name: peer0
+      address: peer0.transporter1-net:7051
+      localmspid: transporter1MSP
+      loglevel: debug
+      tlsstatus: true
+    vault:
+      role: vault-role
+      address: http://192.168.49.1:8200
+      authpath: localtransporter1
+      adminsecretprefix: secretsv2/data/localtransporter1/users/admin
+      secretpath: secretsv2
+      serviceaccountname: vault-auth
+      type: hashicorp
+      imagesecretname: ""
+      tls: false
+    orderer:
+      address: orderer1.pm3org-net.pm3fraktal.se:443
+    chaincode:
+      builder: hyperledger/fabric-ccenv:2.5.4
+      name: pm3package
+      version: 1
+      sequence: 16
+      commitarguments: ''
+      endorsementpolicies: ''
+      initrequired: false
+      repository:
+        hostname: "github.com"
+        git_username: "Fraktal-PM3"
+        url: github.com/Fraktal-PM3/fraktal.git
+        branch: main
+        path: chaincodes/package/
+      pdc:
+        enabled: false
+        collectionsconfig:  ""
+    channel:
+      name: pm3
+    endorsers:
+      creator: transporter1-net
+      name:  transporter1  ombud1  ombud2  pm3org 
+      corepeeraddress:  peer0.transporter1-net.pm3fraktal.se:443  peer0.ombud1-net.pm3fraktal.se:443  peer0.ombud2-net.pm3fraktal.se:443  peer0.pm3org-net.pm3fraktal.se:443 
+      nameslist: 
+        - name: transporter1
+        - name: ombud1
+        - name: ombud2
+        - name: pm3org
