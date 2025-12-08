@@ -153,6 +153,25 @@ fabric:
   # -- Enrollment secret for CA registration
   enrollSecret: "adminpw"
 
+  # gRPC keepalive options to prevent "ENHANCE_YOUR_CALM" and "too_many_pings" errors
+  # These values control how frequently the SDK sends keepalive pings to peers and orderers
+  grpcOptions:
+    # -- Time between keepalive pings (milliseconds)
+    # Default: 120000 (2 minutes) - reduces ping frequency
+    keepaliveTimeMs: 120000
+    # -- Timeout waiting for keepalive ping response (milliseconds)
+    # Default: 20000 (20 seconds)
+    keepaliveTimeoutMs: 20000
+    # -- Allow keepalive pings even when there are no active gRPC calls
+    # Default: 1 (enabled)
+    keepalivePermitWithoutCalls: 1
+    # -- Minimum time between successive pings (milliseconds)
+    # Default: 120000 (2 minutes) - prevents excessive pings
+    minTimeBetweenPingsMs: 120000
+    # -- Maximum number of pings that can be sent without data/headers
+    # Default: 2
+    maxPingsWithoutData: 2
+
 # MSP (Membership Service Provider) configuration
 msp:
   # -- Name of Kubernetes secret containing MSP directory structure

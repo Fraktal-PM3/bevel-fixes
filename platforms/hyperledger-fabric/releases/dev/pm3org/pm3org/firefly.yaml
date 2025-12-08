@@ -93,6 +93,14 @@ spec:
         enrollId: "pm3org-admin"
         enrollSecret: "pm3org-adminpw"
 
+        # gRPC keepalive options to prevent "ENHANCE_YOUR_CALM" errors
+        grpcOptions:
+          keepaliveTimeMs: 120000
+          keepaliveTimeoutMs: 20000
+          keepalivePermitWithoutCalls: 1
+          minTimeBetweenPingsMs: 120000
+          maxPingsWithoutData: 2
+
       # MSP secret configuration
       msp:
         secretName: "fabconnect-msp"

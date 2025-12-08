@@ -164,12 +164,24 @@ peers:
     url: {{ .Values.fabric.peerUrl }}
     tlsCACerts:
       path: {{ .Values.msp.mountPath }}/msp/tlscacerts/tlsca.pem
+    grpcOptions:
+      grpc.keepalive_time_ms: {{ .Values.fabric.grpcOptions.keepaliveTimeMs }}
+      grpc.keepalive_timeout_ms: {{ .Values.fabric.grpcOptions.keepaliveTimeoutMs }}
+      grpc.keepalive_permit_without_calls: {{ .Values.fabric.grpcOptions.keepalivePermitWithoutCalls }}
+      grpc.http2.min_time_between_pings_ms: {{ .Values.fabric.grpcOptions.minTimeBetweenPingsMs }}
+      grpc.http2.max_pings_without_data: {{ .Values.fabric.grpcOptions.maxPingsWithoutData }}
 
 orderers:
   {{ .Values.fabric.organizationName }}_orderer:
     url: {{ .Values.fabric.ordererUrl }}
     tlsCACerts:
       path: {{ .Values.msp.mountPath }}/msp/tlscacerts/tlsca.pem
+    grpcOptions:
+      grpc.keepalive_time_ms: {{ .Values.fabric.grpcOptions.keepaliveTimeMs }}
+      grpc.keepalive_timeout_ms: {{ .Values.fabric.grpcOptions.keepaliveTimeoutMs }}
+      grpc.keepalive_permit_without_calls: {{ .Values.fabric.grpcOptions.keepalivePermitWithoutCalls }}
+      grpc.http2.min_time_between_pings_ms: {{ .Values.fabric.grpcOptions.minTimeBetweenPingsMs }}
+      grpc.http2.max_pings_without_data: {{ .Values.fabric.grpcOptions.maxPingsWithoutData }}
 
 certificateAuthorities:
   {{ .Values.fabric.organizationName }}_ca:
