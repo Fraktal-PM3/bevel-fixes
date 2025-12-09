@@ -8,9 +8,9 @@ global:
     type: hashicorp
     network: fabric
     address: http://192.168.49.1:8200
-    authPath: localpm3org
+    authPath: localtransporter1
     secretEngine: secretsv2
-    secretPrefix: "data/localpm3org"
+    secretPrefix: "data/localtransporter1"
     role: vault-role
     tls: false
   proxy:
@@ -20,15 +20,18 @@ global:
 image:
   fabricTools: ghcr.io/hyperledger/bevel-fabric-tools
   alpineUtils: ghcr.io/hyperledger/bevel-alpine:latest
+  #fabricTools: ghcr.io/hyperledger/bevel-fabric-tools
+  #alpineUtils: ghcr.io/hyperledger/bevel-alpine:latest
   pullSecret: ""
 
-orderers:
-  - name: orderer1
-    adminAddress: orderer1.pm3org-net:7055
-  - name: orderer2
-    adminAddress: orderer2.pm3org-net:7055
-  - name: orderer3
-    adminAddress: orderer3.pm3org-net:7055
-
-addOrderer: false
-
+peer:
+  name: peer0
+  type: anchor
+  address: peer0.transporter1-net.pm3fraktal.se:443
+  localMspId: transporter1MSP
+  logLevel: debug
+  tlsStatus: true
+  channelName: pm3  
+  ordererAddress: orderer1.pm3org-net.pm3fraktal.se:443
+  addPeerValue: false
+  addnewOrgValue: false
