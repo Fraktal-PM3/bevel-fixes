@@ -1,0 +1,97 @@
+##############################################################################################
+#  Copyright Accenture. All Rights Reserved.
+#
+#  SPDX-License-Identifier: Apache-2.0
+##############################################################################################
+---
+# This role ensures cert-manager is installed for FireFly deployment
+# FireFly's dataexchange component requires cert-manager for TLS certificate generation
+
+# Check if cert-manager is already installed
+- name: Check if cert-manager deployment exists
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ kubeconfig_path }}"
+    kind: Deployment
+    name: cert-manager
+    namespace: cert-manager
+  register: certmanager_deployment
+  ignore_errors: true
+
+# Check if cert-manager CRDs are installed
+- name: Check if cert-manager CRDs exist
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ kubeconfig_path }}"
+    kind: CustomResourceDefinition
+    name: certificates.cert-manager.io
+  register: certmanager_crds
+  ignore_errors: true
+
+# Install cert-manager using kubectl apply (recommended method)
+- name: Install cert-manager using official manifest
+  kubernetes.core.k8s:
+    kubeconfig: "{{ kubeconfig_path }}"
+    state: present
+    definition: "{{ lookup('url', 'https://github.com/cert-manager/cert-manager/releases/download/v1.14.4/cert-manager.yaml', split_lines=False) }}"
+  when:
+    - certmanager_crds.resources is not defined or certmanager_crds.resources | length == 0
+
+# Wait for cert-manager to be ready
+- name: Wait for cert-manager deployment to be ready
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ kubeconfig_path }}"
+    kind: Deployment
+    name: cert-manager
+    namespace: cert-manager
+  register: certmanager_status
+  until:
+    - certmanager_status.resources is defined
+    - certmanager_status.resources | length > 0
+    - certmanager_status.resources[0].status.readyReplicas is defined
+    - certmanager_status.resources[0].status.readyReplicas > 0
+  retries: 30
+  delay: 10
+
+# Wait for cert-manager webhook to be ready
+- name: Wait for cert-manager webhook to be ready
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ kubeconfig_path }}"
+    kind: Deployment
+    name: cert-manager-webhook
+    namespace: cert-manager
+  register: webhook_status
+  until:
+    - webhook_status.resources is defined
+    - webhook_status.resources | length > 0
+    - webhook_status.resources[0].status.readyReplicas is defined
+    - webhook_status.resources[0].status.readyReplicas > 0
+  retries: 30
+  delay: 10
+
+# Check if self-signed ClusterIssuer already exists
+- name: Check if selfsigned-ca ClusterIssuer exists
+  kubernetes.core.k8s_info:
+    kubeconfig: "{{ kubeconfig_path }}"
+    kind: ClusterIssuer
+    name: selfsigned-ca
+  register: cluster_issuer
+  ignore_errors: true
+
+# Create self-signed ClusterIssuer for FireFly dataexchange certificates
+- name: Create self-signed ClusterIssuer
+  kubernetes.core.k8s:
+    kubeconfig: "{{ kubeconfig_path }}"
+    state: present
+    definition:
+      apiVersion: cert-manager.io/v1
+      kind: ClusterIssuer
+      metadata:
+        name: selfsigned-ca
+      spec:
+        selfSigned: {}
+  when:
+    - cluster_issuer.resources is not defined or cluster_issuer.resources | length == 0
+
+# Display installation status
+- name: Display cert-manager installation status
+  debug:
+    msg: "cert-manager is installed and ready. ClusterIssuer 'selfsigned-ca' is available for FireFly."
