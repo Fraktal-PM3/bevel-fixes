@@ -1,0 +1,37 @@
+global:
+  version: 2.5.4
+  serviceAccountName: vault-auth
+  cluster:
+    provider: minikube
+    cloudNativeServices: false
+  vault:
+    type: hashicorp
+    network: fabric
+    address: http://192.168.49.1:8200
+    authPath: localombud2
+    secretEngine: secretsv2
+    secretPrefix: "data/localombud2"
+    role: vault-role
+    tls: false
+  proxy:
+    provider: haproxy
+    externalUrlSuffix: pm3fraktal.se
+
+image:
+  fabricTools: ghcr.io/hyperledger/bevel-fabric-tools
+  alpineUtils: ghcr.io/hyperledger/bevel-alpine:latest
+  #fabricTools: ghcr.io/hyperledger/bevel-fabric-tools
+  #alpineUtils: ghcr.io/hyperledger/bevel-alpine:latest
+  pullSecret: ""
+
+peer:
+  name: peer0
+  type: anchor
+  address: peer0.ombud2-net.pm3fraktal.se:443
+  localMspId: ombud2MSP
+  logLevel: debug
+  tlsStatus: true
+  channelName: pm3  
+  ordererAddress: orderer1.pm3org-net.pm3fraktal.se:443
+  addPeerValue: false
+  addnewOrgValue: false
