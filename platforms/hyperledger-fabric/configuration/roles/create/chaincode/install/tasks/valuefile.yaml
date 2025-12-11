@@ -82,3 +82,4 @@
   when:
     - peer.chaincodes is defined and '2.' in network.version
     - peer.name == 'peer0'
+    - install_chaincode.resources|length == 0
