@@ -36,7 +36,7 @@
     org_type: "peer"
     peer_name: "{{ peer.name }}"
     peer_address: "{{ peer.name }}.{{ namespace }}:{{ peer.grpc.port }}"
-    component_name: "chaincode-install-{{ name }}-{{ peer.name }}-{{ chaincode.name }}-{{ chaincode.version | replace('.','-')}}"
+    component_name: "chaincode-install-{{ name }}-{{ peer.name }}-{{ chaincode.name }}-{{ chaincode.version | replace('.','-')}}-{{ chaincode.sequence | default('1') }}"
     component_chaincode: "{{ chaincode }}"
     env_type: "{{ network.env.type }}"
   when: install_chaincode.resources|length == 0
