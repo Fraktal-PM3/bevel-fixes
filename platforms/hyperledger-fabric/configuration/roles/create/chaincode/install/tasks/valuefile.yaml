@@ -4,8 +4,8 @@
 #  SPDX-License-Identifier: Apache-2.0
 ##############################################################################################
 
-# Check if install-chaincode is already run
-- name: "Checking for the install chaincode job is already done on {{ peer.name }}"
+# Check if install-chaincode is already run (new naming pattern with sequence)
+- name: "Checking for the install chaincode job is already done on {{ peer.name }} (new pattern)"
   include_role:
     name: "{{ playbook_dir }}/../../shared/configuration/roles/check/helm_component"
   vars:
@@ -13,10 +13,29 @@
     component_type: "OneTimeJob"
     component_name: "installchaincode-{{ peer.name }}-{{ chaincode.name }}-{{ chaincode.version }}-{{ chaincode.sequence | default('1') }}"
 
-# Set Variable install_chaincode
+# Set Variable install_chaincode_new
+- name: "Set Variable install_chaincode_new"
+  set_fact:
+    install_chaincode_new: "{{ result }}"
+
+# Check if install-chaincode is already run (old naming pattern without explicit sequence)
+- name: "Checking for the install chaincode job is already done on {{ peer.name }} (old pattern)"
+  include_role:
+    name: "{{ playbook_dir }}/../../shared/configuration/roles/check/helm_component"
+  vars:
+    job_title: "install_chaincode"
+    component_type: "OneTimeJob"
+    component_name: "installchaincode-{{ peer.name }}-{{ chaincode.name }}-{{ chaincode.sequence | default('1') }}"
+
+# Set Variable install_chaincode_old
+- name: "Set Variable install_chaincode_old"
+  set_fact:
+    install_chaincode_old: "{{ result }}"
+
+# Combine results - job exists if found in either pattern
 - name: "Set Variable install_chaincode"
   set_fact:
-    install_chaincode: "{{ result }}"
+    install_chaincode: "{{ install_chaincode_new if (install_chaincode_new.resources|length > 0) else install_chaincode_old }}"
 
 # Write the git credentials to Vault
 - name: Write the git credentials to Vault
