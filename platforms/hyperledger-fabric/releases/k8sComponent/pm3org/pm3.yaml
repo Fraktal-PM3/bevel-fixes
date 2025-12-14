@@ -1,0 +1,34 @@
+global:
+  version: 2.5.4
+  serviceAccountName: vault-auth
+  cluster:
+    provider: minikube
+    cloudNativeServices: false
+  vault:
+    type: hashicorp
+    network: fabric
+    address: http://192.168.49.1:8200
+    authPath: localpm3org
+    secretEngine: secretsv2
+    secretPrefix: "data/localpm3org"
+    role: vault-role
+    tls: false
+  proxy:
+    provider: haproxy
+    externalUrlSuffix: pm3fraktal.se
+
+image:
+  fabricTools: ghcr.io/hyperledger/bevel-fabric-tools
+  alpineUtils: ghcr.io/hyperledger/bevel-alpine:latest
+  pullSecret: ""
+
+orderers:
+  - name: orderer1
+    adminAddress: orderer1.pm3org-net:7055
+  - name: orderer2
+    adminAddress: orderer2.pm3org-net:7055
+  - name: orderer3
+    adminAddress: orderer3.pm3org-net:7055
+
+addOrderer: false
+
