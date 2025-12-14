@@ -20,15 +20,18 @@ global:
 image:
   fabricTools: ghcr.io/hyperledger/bevel-fabric-tools
   alpineUtils: ghcr.io/hyperledger/bevel-alpine:latest
+  #fabricTools: ghcr.io/hyperledger/bevel-fabric-tools
+  #alpineUtils: ghcr.io/hyperledger/bevel-alpine:latest
   pullSecret: ""
 
-orderers:
-  - name: orderer1
-    adminAddress: orderer1.pm3org-net:7055
-  - name: orderer2
-    adminAddress: orderer2.pm3org-net:7055
-  - name: orderer3
-    adminAddress: orderer3.pm3org-net:7055
-
-addOrderer: false
-
+peer:
+  name: peer0
+  type: anchor
+  address: peer0.pm3org-net.pm3fraktal.se:443
+  localMspId: pm3orgMSP
+  logLevel: debug
+  tlsStatus: true
+  channelName: pm3  
+  ordererAddress: orderer1.pm3org-net.pm3fraktal.se:443
+  addPeerValue: false
+  addnewOrgValue: false
