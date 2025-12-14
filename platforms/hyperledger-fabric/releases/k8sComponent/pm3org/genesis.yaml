@@ -1,0 +1,77 @@
+global:
+  version: 2.5.4
+  serviceAccountName: vault-auth
+  cluster:
+    provider: minikube
+    cloudNativeServices: false
+  vault:
+    type: hashicorp
+    network: fabric
+    address: http://192.168.49.1:8200
+    authPath: localpm3org
+    secretEngine: secretsv2
+    secretPrefix: "data/localpm3org"
+    role: vault-role
+    tls: false
+  proxy:
+    provider: haproxy
+    externalUrlSuffix: pm3fraktal.se
+
+image:
+  alpineUtils: ghcr.io/hyperledger/bevel-alpine:latest
+  fabricTools: ghcr.io/hyperledger/bevel-fabric-tools
+  #alpineUtils: ghcr.io/hyperledger/bevel-alpine:latest
+  #fabricTools: ghcr.io/hyperledger/bevel-fabric-tools
+  pullSecret: ""
+
+organizations:
+  - name: pm3org
+    orderers:
+    - name: orderer1
+      ordererAddress: orderer1.pm3org-net.pm3fraktal.se:443
+    - name: orderer2
+      ordererAddress: orderer2.pm3org-net.pm3fraktal.se:443
+    - name: orderer3
+      ordererAddress: orderer3.pm3org-net.pm3fraktal.se:443
+    peers:
+    - name: peer0
+      peerAddress: peer0.pm3org-net.pm3fraktal.se:443
+  - name: transporter1
+    peers:
+    - name: peer0
+      peerAddress: peer0.transporter1-net.pm3fraktal.se:443
+  - name: ombud1
+    peers:
+    - name: peer0
+      peerAddress: peer0.ombud1-net.pm3fraktal.se:443
+  - name: ombud2
+    peers:
+    - name: peer0
+      peerAddress: peer0.ombud2-net.pm3fraktal.se:443
+
+consensus: raft
+
+
+channels:
+ 
+ 
+  - name: pm3
+    consortium: PM3Consortium
+    orderers: 
+      - pm3org
+    participants:
+      - transporter1
+      - pm3org
+      - ombud1
+      - ombud2
+
+settings:
+  generateGenesis: True 
+  removeConfigMapOnDelete: false
+
+add_new_org: false
+newOrgs:
+  - name: pm3org
+  - name: transporter1
+  - name: ombud1
+  - name: ombud2
