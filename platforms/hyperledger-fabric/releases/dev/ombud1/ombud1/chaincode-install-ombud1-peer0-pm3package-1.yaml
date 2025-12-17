@@ -1,0 +1,56 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: chaincode-install-ombud1-peer0-pm3package-1
+  namespace: ombud1-net
+  annotations:
+    fluxcd.io/automated: "false"
+spec:
+  interval: 1m
+  releaseName: chaincode-install-ombud1-peer0-pm3package-1
+  chart:
+    spec:
+      interval: 1m
+      sourceRef:
+        kind: GitRepository
+        name: flux-local
+        namespace: flux-local
+      chart: platforms/hyperledger-fabric/charts/fabric-chaincode-install
+  values:
+    metadata:
+      namespace: ombud1-net
+      network:
+        version: 2.5.4
+      images:
+        fabrictools: ghcr.io/hyperledger/bevel-fabric-tools:2.5.4
+        alpineutils: ghcr.io/hyperledger/bevel-alpine:latest
+
+    peer:
+      name: peer0
+      address: peer0.ombud1-net:7051
+      localmspid: ombud1MSP
+      loglevel: debug
+      tlsstatus: true
+    vault:
+      role: vault-role
+      address: http://192.168.49.1:8200
+      authpath: localombud1
+      adminsecretprefix: secretsv2/data/localombud1/users/admin
+      secretgitprivatekey: secretsv2/data/localombud1/credentials/ombud1-net/git
+      serviceaccountname: vault-auth
+      type: hashicorp
+      imagesecretname: ""
+      tls: false
+    chaincode:
+      builder: hyperledger/fabric-ccenv:2.5.4
+      name: pm3package
+      version: 1
+      lang: node
+      maindirectory: .
+      repository:
+        hostname: "github.com"
+        git_username: "Fraktal-PM3"
+        url: github.com/Fraktal-PM3/fraktal.git
+        branch: chaincode-discovery-simplification
+        path: chaincodes/package/
+      endorsementpolicies:  ''
