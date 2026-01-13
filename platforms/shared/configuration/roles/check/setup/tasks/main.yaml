@@ -37,6 +37,17 @@
   register: get_regcred
   when: check == "docker_credentials"
 
+# Check if Docker credentials exist already
+- name: Check external chaincode cred exists
+  k8s_info:
+    kind: Secret
+    namespace: "{{ component_name }}"
+    name: "chaincode-private-regcred"
+    kubeconfig: "{{ kubernetes.config_file }}"
+    context: "{{ kubernetes.context }}"
+  register: get_chaincode_private_regcred
+  when: check == "chaincode_private_registry_credentials"
+
 # Check if Git credentials exist already
 - name: Check git https cred exists
   k8s_info:

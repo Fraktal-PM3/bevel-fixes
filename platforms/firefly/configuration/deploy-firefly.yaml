@@ -1,0 +1,76 @@
+---
+##############################################################################################
+#  Copyright Accenture. All Rights Reserved.
+#
+#  SPDX-License-Identifier: Apache-2.0
+##############################################################################################
+
+# This playbook deploys FireFly for each organization in an existing Hyperledger Fabric network
+# Prerequisites:
+#   - Fabric network must be deployed using Bevel
+#   - MSP credentials must exist in Vault
+#   - Organization namespaces ({org}-net) must already exist
+#   - cert-manager will be automatically installed if not present (required for FireFly dataexchange)
+
+- hosts: ansible_provisioners
+  gather_facts: no
+  no_log: "{{ no_ansible_log | default(false) }}"
+  tasks:
+
+    # Setup cert-manager for FireFly dataexchange TLS certificates
+    # This must be installed before deploying FireFly
+    - name: "Setup cert-manager for FireFly"
+      include_role:
+        name: "setup/cert-manager"
+      vars:
+        kubeconfig_path: "{{ network.organizations[0].k8s.config_file }}"
+      run_once: true
+
+    # Sync MSP credentials from Vault to Kubernetes secrets
+    # This creates the fabconnect-msp secret needed by FabConnect
+    - name: "Create Fabric MSP secrets for FireFly in existing org namespaces"
+      include_role:
+        name: create/secrets
+      vars:
+        component_ns: "{{ org.name | lower }}-net"
+        component: "{{ org.name | lower }}"
+        kubernetes: "{{ org.k8s }}"
+        vault: "{{ org.vault }}"
+        gitops: "{{ org.gitops }}"
+        firefly_config: "{{ org.firefly_config }}"
+      loop: "{{ network['organizations'] }}"
+      loop_control:
+        loop_var: org
+      when:
+        - org.firefly_config is defined
+        - org.firefly_config.enabled == true
+
+    # Deploy FireFly using Helm charts
+    # Each organization gets its own FireFly instance with unique ingress URL
+    - name: Deploy FireFly for each organization
+      include_role:
+        name: "create/firefly_deployment"
+      vars:
+        component_ns: "{{ org.name | lower }}-net"
+        component: "{{ org.name | lower }}"
+        kubernetes: "{{ org.k8s }}"
+        vault: "{{ org.vault }}"
+        gitops: "{{ org.gitops }}"
+        values_dir: "{{playbook_dir}}/../../../{{org.gitops.release_dir}}/{{ org.name | lower }}"
+        firefly_config: "{{ org.firefly_config }}"
+        external_url_suffix: "{{ org.external_url_suffix }}"
+        firefly_hostname: "firefly.{{ org.name | lower }}-net.{{ org.external_url_suffix }}"
+        external_dns_target: "{{ org.firefly_config.external_dns_target | default(org.external_url_suffix) }}"
+        fabric_channel: "{{ network.channels[0].channel_name }}"
+      loop: "{{ network['organizations'] }}"
+      loop_control:
+        loop_var: org
+      when:
+        - org.firefly_config is defined
+        - org.firefly_config.enabled == true
+
+  vars:
+    privilege_escalate: false
+    install_os: "linux"
+    install_arch: "amd64"
+    bin_install_dir: "~/bin"

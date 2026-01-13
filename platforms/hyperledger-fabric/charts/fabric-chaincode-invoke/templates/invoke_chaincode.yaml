@@ -48,6 +48,9 @@ spec:
       - name: scripts-volume
         configMap:
           name: bevel-vault-script
+      - name: orderer-cacert
+        configMap:
+          name: orderer-tls-cacert
       initContainers:
       - name: certificates-init
         image: {{ $.Values.metadata.images.alpineutils }}
@@ -69,8 +72,8 @@ spec:
           value: "{{ $.Values.endorsers.certificates }}"
         - name: CREATOR_NS
           value: "{{ $.Values.endorsers.creator }}"
-        - name: VAULT_ORDERER_SECRET_PREFIX
-          value: "{{ $.Values.vault.orderersecretprefix }}"
+        - name: ORDERER_CA_CRT
+          value: "/orderer-tls-cacert/ca.crt"
         - name: MOUNT_PATH
           value: /secret
         - name: NETWORK_VERSION
@@ -101,10 +104,8 @@ spec:
           # Calling a function to retrieve the vault token.
           vaultBevelFunc "init"
 
-          echo "Getting Orderer TLS certificates from Vault."
-          vaultBevelFunc "readJson" "${VAULT_ORDERER_SECRET_PREFIX}/tls"
-
-          TLS_CA_CERT=$(echo ${VAULT_SECRET} | jq -r '.["ca.crt"]')
+          echo "Getting Orderer TLS certificates from orderer-tls-cacert configmap."
+          TLS_CA_CERT=$(cat ${ORDERER_CA_CRT})
           OUTPUT_PATH="${MOUNT_PATH}/orderer/tls"
           mkdir -p ${OUTPUT_PATH}
           echo "${TLS_CA_CERT}" >> ${OUTPUT_PATH}/ca.crt
@@ -182,6 +183,9 @@ spec:
         - name: scripts-volume
           mountPath: /scripts/bevel-vault.sh
           subPath: bevel-vault.sh
+        - name: orderer-cacert
+          mountPath: /orderer-tls-cacert/ca.crt
+          subPath: cacert
       containers:
       - name: invokechaincode
         image: {{ $.Values.metadata.images.fabrictools }}

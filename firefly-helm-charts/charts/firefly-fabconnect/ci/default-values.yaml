@@ -1,0 +1,35 @@
+# Copyright © 2024 Kaleido, Inc.
+#
+# SPDX-License-Identifier: Apache-2.0
+#
+# CI test values for firefly-fabconnect
+# This is a minimal configuration for testing chart rendering
+
+fabric:
+  peerUrl: "grpcs://peer0.org1.example.com:7051"
+  ordererUrl: "grpcs://orderer.example.com:7050"
+  caUrl: "https://ca.org1.example.com:7054"
+  organizationName: "org1.example.com"
+  organizationMspId: "Org1MSP"
+  channelName: "test-channel"
+  chaincodeName: "firefly"
+  enrollId: "admin"
+  enrollSecret: "adminpw"
+
+msp:
+  secretName: "fabconnect-msp-test"
+
+service:
+  type: ClusterIP
+  port: 3000
+
+resources:
+  limits:
+    cpu: 200m
+    memory: 256Mi
+  requests:
+    cpu: 50m
+    memory: 64Mi
+
+persistentVolume:
+  size: 1Gi

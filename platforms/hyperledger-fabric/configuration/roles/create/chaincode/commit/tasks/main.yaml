@@ -9,6 +9,18 @@
 #############################################################################################
 
 ---
+# Copy genesis-admin-msp-certs ConfigMap to peer namespaces
+- name: "Copy genesis-admin-msp-certs ConfigMap to peer namespaces"
+  include_tasks: copy_genesis_configmap.yaml
+  vars:
+    org_query: "organizations[?name=='{{ participant.name }}']"
+    org: "{{ network | json_query(org_query) | first }}"
+    namespace: "{{ participant.name | lower }}-net"
+  loop: "{{ item.participants }}"
+  loop_control:
+    loop_var: participant
+  when: participant.type != 'orderer'
+
 # Create value file for chaincode commit
 - name: "Create value file for chaincode commit"
   include_tasks: nested_commit.yaml

@@ -8,6 +8,8 @@ apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
   name: {{ include "bevel-storageclass.fullname" . }}
+  annotations:
+    helm.sh/resource-policy: keep
 reclaimPolicy: "{{ .Values.reclaimPolicy }}"
 volumeBindingMode: "{{ .Values.volumeBindingMode }}"
 {{- if .Values.provisioner }}

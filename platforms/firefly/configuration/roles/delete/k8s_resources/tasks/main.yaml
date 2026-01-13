@@ -1,0 +1,108 @@
+---
+##############################################################################################
+#  Copyright Accenture. All Rights Reserved.
+#
+#  SPDX-License-Identifier: Apache-2.0
+##############################################################################################
+
+# This role deletes Kubernetes resources for FireFly
+
+- name: Delete FireFly StatefulSets
+  k8s:
+    api_version: apps/v1
+    kind: StatefulSet
+    namespace: "{{ component_ns }}"
+    label_selectors:
+      - "{{ label_selector }}"
+    state: absent
+    kubeconfig: "{{ kubernetes.config_file }}"
+  ignore_errors: yes
+  when: "'statefulset' in resource_types"
+
+- name: Delete FireFly Deployments
+  k8s:
+    api_version: apps/v1
+    kind: Deployment
+    namespace: "{{ component_ns }}"
+    label_selectors:
+      - "{{ label_selector }}"
+    state: absent
+    kubeconfig: "{{ kubernetes.config_file }}"
+  ignore_errors: yes
+  when: "'deployment' in resource_types"
+
+- name: Delete FireFly Services
+  k8s:
+    api_version: v1
+    kind: Service
+    namespace: "{{ component_ns }}"
+    label_selectors:
+      - "{{ label_selector }}"
+    state: absent
+    kubeconfig: "{{ kubernetes.config_file }}"
+  ignore_errors: yes
+  when: "'service' in resource_types"
+
+- name: Delete FireFly Ingresses
+  k8s:
+    api_version: networking.k8s.io/v1
+    kind: Ingress
+    namespace: "{{ component_ns }}"
+    label_selectors:
+      - "{{ label_selector }}"
+    state: absent
+    kubeconfig: "{{ kubernetes.config_file }}"
+  ignore_errors: yes
+  when: "'ingress' in resource_types"
+
+- name: Delete FireFly ConfigMaps
+  k8s:
+    api_version: v1
+    kind: ConfigMap
+    namespace: "{{ component_ns }}"
+    label_selectors:
+      - "{{ label_selector }}"
+    state: absent
+    kubeconfig: "{{ kubernetes.config_file }}"
+  ignore_errors: yes
+  when: "'configmap' in resource_types"
+
+- name: Delete FireFly Jobs
+  k8s:
+    api_version: batch/v1
+    kind: Job
+    namespace: "{{ component_ns }}"
+    label_selectors:
+      - "{{ label_selector }}"
+    state: absent
+    kubeconfig: "{{ kubernetes.config_file }}"
+  ignore_errors: yes
+  when: "'job' in resource_types"
+
+- name: Delete FireFly Job Pods
+  k8s:
+    api_version: v1
+    kind: Pod
+    namespace: "{{ component_ns }}"
+    label_selectors:
+      - "job-name"
+    state: absent
+    kubeconfig: "{{ kubernetes.config_file }}"
+  ignore_errors: yes
+  when: "'job' in resource_types"
+
+- name: Delete FireFly PVCs
+  k8s:
+    api_version: v1
+    kind: PersistentVolumeClaim
+    namespace: "{{ component_ns }}"
+    label_selectors:
+      - "{{ label_selector }}"
+    state: absent
+    kubeconfig: "{{ kubernetes.config_file }}"
+  ignore_errors: yes
+  when: "'pvc' in resource_types"
+
+- name: Wait for resource deletion
+  pause:
+    seconds: 10

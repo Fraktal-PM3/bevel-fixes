@@ -33,13 +33,40 @@
   tags:
     - haproxy
 
+# Add external IP to HAProxy service for minikube deployments
+- name: Add external IP to HAProxy service
+  shell: |
+    KUBECONFIG={{ kubeconfig_path }} kubectl patch svc haproxy-ingress -n ingress-controller -p '{"spec":{"externalIPs":["{{ network.env.proxy_external_ip }}"]}}'
+  tags:
+    - haproxy
+  when: 
+    - network.env.proxy_external_ip is defined
+    - network.env.proxy_external_ip != ""
+    - network.cloud_provider is defined
+    - network.cloud_provider == "minikube"
+
 # Update external_dns with correct annotations
-- name: Enable external DNS
+- name: Enable external DNS for wildcard domains
   shell: |
     KUBECONFIG={{ kubeconfig_path }} kubectl annotate service haproxy-ingress -n ingress-controller --overwrite "external-dns.alpha.kubernetes.io/hostname=*.{{ item.external_url_suffix }}."
+  loop: "{{ network.organizations }}"
+  loop_control:
+    loop_var: item
   tags:
     - haproxy
   when: network.env.external_dns is defined and network.env.external_dns == 'enabled'
+
+# Set external IP target for External DNS
+- name: Set external IP target for External DNS
+  shell: |
+    KUBECONFIG={{ kubeconfig_path }} kubectl annotate service haproxy-ingress -n ingress-controller --overwrite "external-dns.alpha.kubernetes.io/target={{ network.env.proxy_external_ip }}"
+  tags:
+    - haproxy
+  when: 
+    - network.env.external_dns is defined 
+    - network.env.external_dns == 'enabled'
+    - network.env.proxy_external_ip is defined
+    - network.env.proxy_external_ip != ""
 
 # Wait for HAProxy pods to start running
 - name: Wait for pods to come up

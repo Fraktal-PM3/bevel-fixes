@@ -18,6 +18,7 @@ metadata:
     {{- include "labels.custom" . | nindent 2 }}
 spec:
   backoffLimit: 6
+  activeDeadlineSeconds: 1800
   template:
     metadata:
       labels:
@@ -64,8 +65,6 @@ spec:
           value: {{ $.Values.vault.role }}
         - name: VAULT_PEER_SECRET_PREFIX
           value: "{{ $.Values.vault.adminsecretprefix }}"
-        - name: VAULT_ORDERER_SECRET_PREFIX
-          value: "{{ $.Values.vault.orderersecretprefix }}"
         - name: MOUNT_PATH
           value: /secret
         - name: NETWORK_VERSION
@@ -80,17 +79,12 @@ spec:
 
           # Calling a function to retrieve the vault token.
           vaultBevelFunc "init"
-
-          echo "Getting Orderer TLS certificates from Vault."
-          vaultBevelFunc "readJson" "${VAULT_ORDERER_SECRET_PREFIX}/tls"
-
-          TLS_CA_CERT=$(echo ${VAULT_SECRET} | jq -r '.["ca.crt"]')
-          OUTPUT_PATH="${MOUNT_PATH}/orderer/tls"
-          mkdir -p ${OUTPUT_PATH}
-          echo "${TLS_CA_CERT}" >> ${OUTPUT_PATH}/ca.crt
+          echo johann prints env
+          env
+          echo 
 
           echo "Getting MSP certificates from Vault."
-          vaultBevelFunc "readJson" "${VAULT_PEER_SECRET_PREFIX}/msp"
+          vaultBevelFunc "readJson" "${VAULT_PEER_SECRET_PREFIX}-msp"
 
           ADMINCERT=$(echo ${VAULT_SECRET} | jq -r '.["admincerts"]')
           CACERTS=$(echo ${VAULT_SECRET} | jq -r '.["cacerts"]')
@@ -115,6 +109,7 @@ spec:
           vault_secret_key={{ $.Values.vault.secretgitprivatekey }}
 
           # Calling a function to retrieve secrets from Vault only if they exist.
+          echo "readJson" "${vault_secret_key}"
           vaultBevelFunc "readJson" "${vault_secret_key}"
           
           VALUE_OF_SECRET=$(echo ${VAULT_SECRET} | jq -r ".[\"git_password\"]")         
@@ -148,15 +143,29 @@ spec:
           if [ $version2_5 = 1 ]
           then
             GOPATH="/root/go"
-            mkdir -p $GOPATH 
-            # Define the packages to install
-            packages_to_install="openssh-client git"
+            mkdir -p $GOPATH
+            # Define the packages to install (including curl for NodeSource setup)
+            packages_to_install="openssh-client git curl ca-certificates gnupg"
             install_packages "$packages_to_install"
-          else 
-            # Define the packages to install
-            packages_to_install="curl openssh"
+
+            # Install Node.js 20.x from NodeSource for Ubuntu-based images
+            echo "Setting up NodeSource repository for Node.js 20..."
+            curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
+
+            echo "Installing Node.js 20..."
+            packages_to_install="nodejs"
             install_packages "$packages_to_install"
-          fi 
+          else
+            # Define the packages to install
+            packages_to_install="curl openssh nodejs npm"
+            install_packages "$packages_to_install"
+          fi
+
+          # Verify Node.js and npm are installed
+          echo "Verifying Node.js installation..."
+          node --version || echo "Node.js not found, will be skipped"
+          echo "Verifying npm installation..."
+          npm --version || echo "npm not found, will be skipped" 
 
           mkdir -p /root/.ssh/     
           ssh-keyscan {{ $.Values.chaincode.repository.hostname }} > /root/.ssh/known_hosts
@@ -230,12 +239,65 @@ spec:
             echo $CC_SRC_PATH
           elif [ ${CC_RUNTIME_LANGUAGE} = "node" ]
           then
-            ## Copying desired chaincode to a location relative to $GOPATH/src
-            mkdir -p $GOPATH/src/github.com/chaincode
-            cp -R /tmp/chaincode/{{ $.Values.chaincode.repository.path }}/* $GOPATH/src/github.com/chaincode/
+            ## Verify Node.js and npm are available
+            echo "Verifying Node.js and npm for chaincode build..."
+            if ! command -v node >/dev/null 2>&1; then
+              echo "ERROR: Node.js is not installed"
+              exit 1
+            fi
+            if ! command -v npm >/dev/null 2>&1; then
+              echo "ERROR: npm is not installed"
+              exit 1
+            fi
 
-            #chaincode path
-            CC_SRC_PATH="${GOPATH}/src/github.com/chaincode/${CHAINCODE_NAME}/${CHAINCODE_MAINDIR}"
+            NODE_VERSION=$(node --version | cut -d'v' -f2 | cut -d'.' -f1)
+            echo "Node.js version: $(node --version)"
+            echo "npm version: $(npm --version)"
+
+            if [ "$NODE_VERSION" -lt 20 ]; then
+              echo "WARNING: Node.js version $NODE_VERSION is less than recommended version 20"
+            fi
+
+            ## Copying desired chaincode to a location relative to $GOPATH/src
+            mkdir -p $GOPATH/src/github.com/chaincode/${CHAINCODE_NAME}
+            cp -R /tmp/chaincode/{{ $.Values.chaincode.repository.path }}/* $GOPATH/src/github.com/chaincode/${CHAINCODE_NAME}/
+
+            # Install Node.js dependencies
+            echo "Installing Node.js dependencies..."
+            cd $GOPATH/src/github.com/chaincode/${CHAINCODE_NAME}
+
+            # Check if package.json exists and install dependencies
+            if [ -f "package.json" ]; then
+              # Replace hardcoded MSP ID for pm3roleauth chaincode
+              if [ "${CHAINCODE_NAME}" = "pm3roleauth" ] && [ -f "src/roleAuthContract.ts" ]; then
+                echo "Replacing Org1MSP with pm3orgMSP in roleAuthContract.ts..."
+                sed -i 's/Org1MSP/pm3orgMSP/g' src/roleAuthContract.ts
+              fi
+
+              # Replace hardcoded MSP ID for pm3package chaincode
+              if [ "${CHAINCODE_NAME}" = "pm3package" ] && [ -f "src/packageContract.ts" ]; then
+                echo "Replacing Org1MSP with pm3orgMSP in packageContract.ts..."
+                sed -i 's/Org1MSP/pm3orgMSP/g' src/packageContract.ts
+              fi
+
+              # Always run npm install
+              echo "Running npm install..."
+              npm install
+
+              echo "Npm CI"
+              npm ci
+
+              # Run npm package script
+              echo "Running npm run package..."
+              npm run package
+            fi
+
+            #chaincode path - use current directory if CHAINCODE_MAINDIR is ".", otherwise append it
+            if [ "${CHAINCODE_MAINDIR}" = "." ]; then
+              CC_SRC_PATH="${GOPATH}/src/github.com/chaincode/${CHAINCODE_NAME}"
+            else
+              CC_SRC_PATH="${GOPATH}/src/github.com/chaincode/${CHAINCODE_NAME}/${CHAINCODE_MAINDIR}"
+            fi
           fi
           version1_4=`echo $NETWORK_VERSION | grep -c 1.4`
           if [ $version1_4 = 1 ];then
@@ -315,10 +377,6 @@ spec:
           value: "{{ $.Values.peer.tlsstatus }}"
         - name: CORE_PEER_TLS_ROOTCERT_FILE
           value: /opt/gopath/src/github.com/hyperledger/fabric/crypto/admin/msp/tlscacerts/tlsca.crt
-        - name: ORDERER_CA
-          value: /opt/gopath/src/github.com/hyperledger/fabric/crypto/orderer/tls/ca.crt
-        - name: ORDERER_URL
-          value: {{ $.Values.orderer.address }}
         - name: CORE_PEER_MSPCONFIGPATH
           value: /opt/gopath/src/github.com/hyperledger/fabric/crypto/admin/msp
         - name: CHAINCODE_NAME

@@ -14,39 +14,81 @@
 # Git push the new files, reset config files for local execution
 - name: "Execute git push for ssh"
   shell: |
+    set -e
     cd "{{ GIT_DIR }}"
-    echo "---------------GIT PUSH---------------"
+    echo "=============== GIT PUSH (SSH) ==============="
+    echo "Working directory: $(pwd)"
     export GIT_SSH_COMMAND='ssh -i {{ gitops.private_key }}'
     git config user.email {{ gitops.email }}
     git config user.name {{ gitops.username }}
-    git --git-dir={{ GIT_DIR }}/.git pull
-    git --git-dir={{ GIT_DIR }}/.git add -A .
-    
-    git --git-dir={{ GIT_DIR }}/.git commit -s -m "{{ msg }}" || true
-    git --git-dir={{ GIT_DIR }}/.git push {{ gitops.git_url }} HEAD:{{ gitops.branch }}  
+
+    echo "→ Pulling latest changes..."
+    git pull
+
+    echo "→ Staging files..."
+    git add -A .
+
+    echo "→ Committing changes..."
+    if git commit -s -m "{{ msg }}"; then
+      echo "✓ Changes committed successfully"
+      echo "→ Pushing to {{ gitops.branch }}..."
+      if git push {{ gitops.git_url }} HEAD:{{ gitops.branch }}; then
+        echo "✓ Changes pushed to {{ gitops.branch }} successfully"
+        echo "→ Updating local tracking branch..."
+        git fetch origin {{ gitops.branch }}:{{ gitops.branch }} 2>/dev/null || true
+        echo "=============================================="
+      else
+        echo "✗ ERROR: Git push failed!"
+        exit 1
+      fi
+    else
+      echo "ℹ No changes to commit"
+      echo "=============================================="
+    fi
   register: GIT_OUTPUT_SSH
-  when: 
-  - gitops.git_protocol is defined 
+  when:
+  - gitops.git_protocol is defined
   - gitops.git_protocol == "ssh"
-  ignore_errors: true
+  ignore_errors: false
 
 
 # Git push the new files, reset config files
 - name: "Execute git push for https"
   shell: |
+    set -e
     cd "{{ GIT_DIR }}"
-    echo "---------------GIT PUSH---------------"
+    echo "=============== GIT PUSH (HTTPS) ==============="
+    echo "Working directory: $(pwd)"
     git config user.email {{ gitops.email }}
     git config user.name {{ gitops.username }}
-    git --git-dir={{ GIT_DIR }}/.git pull
-    git --git-dir={{ GIT_DIR }}/.git add -A .
-    
-    git --git-dir={{ GIT_DIR }}/.git commit -s -m "{{ msg }}" || true
-    git --git-dir={{ GIT_DIR }}/.git push https://{{ gitops.username }}:{{ gitops.password }}@{{ gitops.git_repo }} HEAD:{{ gitops.branch }}
-  
+
+    echo "→ Pulling latest changes..."
+    git pull
+
+    echo "→ Staging files..."
+    git add -A .
+
+    echo "→ Committing changes..."
+    if git commit -s -m "{{ msg }}"; then
+      echo "✓ Changes committed successfully"
+      echo "→ Pushing to {{ gitops.branch }}..."
+      if git push https://{{ gitops.username }}:{{ gitops.password }}@{{ gitops.git_repo }} HEAD:{{ gitops.branch }}; then
+        echo "✓ Changes pushed to {{ gitops.branch }} successfully"
+        echo "→ Updating local tracking branch..."
+        git fetch origin {{ gitops.branch }}:{{ gitops.branch }} 2>/dev/null || true
+        echo "================================================"
+      else
+        echo "✗ ERROR: Git push failed!"
+        exit 1
+      fi
+    else
+      echo "ℹ No changes to commit"
+      echo "================================================"
+    fi
+
   register: GIT_OUTPUT
   when: gitops.git_protocol is not defined or gitops.git_protocol == "https"
-  ignore_errors: true
+  ignore_errors: false
 
 # Display output of shell excution
 - name: "stdout for SSH gitpush"

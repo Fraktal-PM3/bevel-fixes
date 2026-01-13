@@ -59,6 +59,18 @@
       - network.env.proxy == 'ambassador'
       - network.type == 'besu'
 
+  # Setup External DNS (must be before ingress controllers)
+  - include_role:
+      name: setup/external-dns
+    vars:
+      kubeconfig_path: "{{ item.k8s.config_file }}"
+      kubecontext: "{{ item.k8s.context }}"
+    with_items: "{{ network.organizations }}"
+    when: 
+      - network.env.external_dns is defined
+      - network.env.external_dns == 'enabled'
+    run_once: true  # Only deploy External DNS once per cluster
+
   # Setup haproxy-ingress for Fabric
   - include_role:
       name: setup/haproxy-ingress

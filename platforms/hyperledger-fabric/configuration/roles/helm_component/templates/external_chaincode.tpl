@@ -15,32 +15,43 @@ spec:
         kind: GitRepository
         name: flux-{{ network.env.type }}
         namespace: flux-{{ network.env.type }}
-      chart: {{ charts_dir }}/fabric-external-chaincode  
+      chart: {{ charts_dir }}/fabric-external-chaincode
   values:
+    global:
+      version: {{ network.version }}
+      serviceAccountName: vault-auth
+      cluster:
+        provider: {{ org.cloud_provider }}
+        cloudNativeServices: false
+      vault:
+        type: hashicorp
+        address: {{ vault.url }}
+        role: vault-role
+        authPath: {{ network.env.type }}{{ org_name }}
+        secretEngine: {{ vault.secret_path | default("secretsv2") }}
+        secretPrefix: "data/{{ network.env.type }}{{ org_name }}"
+        tls: false
+      proxy:
+        provider: {{ network.env.proxy | quote }}
+        externalUrlSuffix: {{ org.external_url_suffix }}
+
     metadata:
       namespace: {{ chaincode_ns }}
-      network:
-        version: {{ network.version }}
       images:
         external_chaincode: {{ chaincode_image }}
-        alpineutils: {{ docker_url }}/{{ alpine_image }}
+        alpineutils: {{ docker_url }}/bevel-alpine:{{ bevel_alpine_version }}
 
     chaincode:
       name: {{ chaincode.name }}
       version: {{ chaincode.version }}
-      ccid: {{ ccid.stdout | replace(',','') }} 
-      tls: {{ chaincode.tls }}
+      ccid: {{ ccid.stdout | default('') | replace(',','') }}
+      tls_disabled: {{ (not chaincode.tls) | lower }}
 {% if chaincode.tls == true %}      
       crypto_mount_path: {{ chaincode.crypto_mount_path }}
 {% endif %}
 
     vault:
-      role: vault-role
-      address: {{ vault.url }}
-      authpath: {{ item.k8s.cluster_id | default('')}}{{ network.env.type }}{{ item.name | lower }}
-      chaincodesecretprefix: {{ vault.secret_path | default('secretsv2') }}/data/{{ item.name | lower }}/peerOrganizations/{{ namespace }}/chaincodes/{{ chaincode.name }}/certificate/v{{ chaincode.version }}
-      serviceaccountname: vault-auth
-      type: {{ vault.type | default("hashicorp") }}
+      chaincodesecretprefix: {{ vault.secret_path | default('secretsv2') }}/data/{{ network.env.type }}{{ org.name | lower }}/chaincodes/secrets
 {% if chaincode.private_registry is not defined or chaincode.private_registry == false %}   
       imagesecretname: regcred
 {% endif %}
@@ -49,6 +60,25 @@ spec:
 {% endif %}
     service:
       servicetype: ClusterIP
+
+    certs:
+      generateCertificates: {{ chaincode.tls | lower }}
+      orgData:
+{% if network.env.proxy == 'none' %}
+        caAddress: ca.{{ namespace }}:7054
+{% else %}
+        caAddress: ca.{{ namespace }}.{{ org.external_url_suffix }}
+{% endif %}
+        caAdminUser: {{ org_name }}-admin
+        caAdminPassword: {{ org_name }}-adminpw
+        orgName: {{ org_name }}
+        type: chaincode
+        componentSubject: "{{ component_subject | quote }}"
+      users:
+        usersList:
+          - user:
+            identity: cc-{{ chaincode.name | lower | e }}
+            attributes:
 
 {% if network.env.labels is defined %}
     labels:

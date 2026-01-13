@@ -13,6 +13,7 @@
   include_tasks: valuefile.yaml
   vars:
     channelcreator_query: "participants[?type=='creator']"
+    channel_name: "{{ item.channel_name }}"
   loop: "{{ item | json_query(channelcreator_query) }}"
   loop_control:
     loop_var: peer

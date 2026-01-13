@@ -34,6 +34,14 @@ Before deploying the Helm chart, make sure to have the following prerequisites:
 - The Vault is unsealed and initialized.
 - Helm installed.
 
+### Using a custom external chaincode builder
+
+If you want to use a custom external chaincode builder, you can do this by copying your builder
+manually to the peer's filesystem. The path should be the same as configured in `platforms/hyperledger-fabric/charts/fabric-peernode/conf/default_core.yaml`. For example:
+
+```bash
+kubectl -n supplychain-net cp localBuilder/bin fabric-peernode-peer0-0:/var/hyperledger/production/buildpacks/sampleBuilder -c peer0
+```
 
 <a name = "chart-structure"></a>
 ## Chart Structure
@@ -49,6 +57,8 @@ fabric-external-chaincode-install/
   |- README.md
   |- values.yaml
 ```
+
+
 
 - `templates/`: Contains the Kubernetes manifest templates that define the resources to be deployed.
 - `helpers.tpl`: Contains custom label definitions used in other templates.

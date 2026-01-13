@@ -1,0 +1,152 @@
+{{/*
+  Copyright © 2024 Kaleido, Inc.
+
+  SPDX-License-Identifier: Apache-2.0
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+  http://swww.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+*/}}
+
+{{- if and .Values.config.autoEnrollIdentity (ne .Values.config.autoEnrollIdentity "") }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "firefly-fabconnect.fullname" . }}-enroll-identity
+  labels:
+    helm.sh/chart: {{ include "firefly-fabconnect.chart" . }}
+    app.kubernetes.io/name: {{ include "firefly-fabconnect.name" . }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: identity-enrollment
+    {{- if .Chart.AppVersion }}
+    app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
+    {{- end }}
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+spec:
+  backoffLimit: 10
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: {{ include "firefly-fabconnect.name" . }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
+        app.kubernetes.io/component: identity-enrollment
+    spec:
+      restartPolicy: OnFailure
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      initContainers:
+        - name: wait-for-ca
+          image: curlimages/curl:latest
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              set -e
+              CA_URL="{{ .Values.fabric.caUrl }}"
+              echo "Checking Fabric CA availability at $CA_URL..."
+
+              MAX_RETRIES=60
+              RETRY_COUNT=0
+              SLEEP_TIME=5
+
+              until curl -skf $CA_URL/cainfo > /dev/null 2>&1; do
+                RETRY_COUNT=$((RETRY_COUNT + 1))
+                if [ $RETRY_COUNT -ge $MAX_RETRIES ]; then
+                  echo "ERROR: Fabric CA not available after $MAX_RETRIES attempts"
+                  exit 1
+                fi
+                echo "CA not ready yet, waiting... (attempt $RETRY_COUNT/$MAX_RETRIES)"
+                sleep $SLEEP_TIME
+              done
+
+              echo "Fabric CA is available!"
+      containers:
+        - name: enroll-identity
+          image: curlimages/curl:latest
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              set -e
+              FABCONNECT_URL="http://{{ include "firefly-fabconnect.fullname" . }}.{{ .Release.Namespace }}.svc:{{ .Values.service.port }}"
+              IDENTITY_NAME="{{ .Values.config.autoEnrollIdentity }}"
+              NAMESPACE="{{ .Release.Namespace }}"
+
+              echo "===== FireFly Fabconnect Identity Enrollment ====="
+              echo "Identity Name: $IDENTITY_NAME"
+              echo "Fabconnect URL: $FABCONNECT_URL"
+              echo "Organization: {{ .Values.fabric.organizationName }}"
+              echo "=================================================="
+
+              echo "Waiting for fabconnect to be ready at $FABCONNECT_URL..."
+              MAX_RETRIES=60
+              RETRY_COUNT=0
+              SLEEP_TIME=5
+
+              until curl -sf $FABCONNECT_URL/status > /dev/null 2>&1; do
+                RETRY_COUNT=$((RETRY_COUNT + 1))
+                if [ $RETRY_COUNT -ge $MAX_RETRIES ]; then
+                  echo "ERROR: Fabconnect did not become ready after $MAX_RETRIES attempts"
+                  exit 1
+                fi
+                echo "Fabconnect not ready yet, waiting... (attempt $RETRY_COUNT/$MAX_RETRIES)"
+                sleep $SLEEP_TIME
+              done
+              echo "Fabconnect is ready!"
+
+              echo "Checking if identity '$IDENTITY_NAME' exists..."
+              if curl -sf $FABCONNECT_URL/identities/$IDENTITY_NAME > /dev/null 2>&1; then
+                echo "Identity '$IDENTITY_NAME' already exists, verifying enrollment..."
+
+                # Verify the identity is actually enrolled and usable
+                IDENTITY_INFO=$(curl -sf $FABCONNECT_URL/identities/$IDENTITY_NAME)
+                echo "Identity info: $IDENTITY_INFO"
+                echo "Identity '$IDENTITY_NAME' is enrolled and ready"
+                exit 0
+              fi
+
+              echo "Registering identity '$IDENTITY_NAME'..."
+              RESPONSE=$(curl -sf -X POST $FABCONNECT_URL/identities \
+                -H "Content-Type: application/json" \
+                -d "{\"name\":\"$IDENTITY_NAME\",\"type\":\"client\",\"maxEnrollments\":-1}")
+
+              echo "Registration response: $RESPONSE"
+
+              # Extract secret using sed (more portable than grep -P)
+              SECRET=$(echo "$RESPONSE" | sed -n 's/.*"secret":"\([^"]*\)".*/\1/p')
+
+              if [ -z "$SECRET" ]; then
+                echo "ERROR: Failed to get secret for identity enrollment"
+                echo "Response was: $RESPONSE"
+                exit 1
+              fi
+
+              echo "Secret extracted successfully (length: ${#SECRET})"
+
+              echo "Enrolling identity '$IDENTITY_NAME' with secret..."
+              ENROLL_RESPONSE=$(curl -sf -X POST $FABCONNECT_URL/identities/$IDENTITY_NAME/enroll \
+                -H "Content-Type: application/json" \
+                -d "{\"secret\":\"$SECRET\"}")
+
+              echo "Enrollment response: $ENROLL_RESPONSE"
+
+              # Verify enrollment was successful
+              echo "Verifying enrollment..."
+              sleep 2
+
+              if ! curl -sf $FABCONNECT_URL/identities/$IDENTITY_NAME > /dev/null 2>&1; then
+                echo "ERROR: Identity verification failed after enrollment"
+                exit 1
+              fi
+
+              echo "Identity '$IDENTITY_NAME' enrollment verified successfully!"
+              echo "===== Enrollment Complete ====="
+{{- end }}

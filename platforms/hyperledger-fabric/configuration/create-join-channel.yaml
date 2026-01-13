@@ -16,60 +16,70 @@
   gather_facts: no
   no_log: "{{ no_ansible_log | default(false) }}"
   tasks:
-    # Create or get Orderer crypto materials
-    - include_role:
-        name: "create/crypto/orderer"
-      vars:
-        component_name: "{{ item.name | lower}}-net"
-        component_type: "{{ item.type | lower}}"
-        org_name: "{{ item.name }}"
-        services: "{{ item.services }}"
-        subject: "{{ item.subject }}"
-        ca_url: "{{ item.ca_data.url }}"
-        kubernetes: "{{ item.k8s }}"
-        vault: "{{ item.vault }}"
-      loop: "{{ network['organizations'] }}"
-      when: item.type == 'orderer'
-    
-    # Create or get Organization crypto materials
-    - include_role:
-        name: "create/crypto/peer"
-      vars:
-        component_name: "{{ item.name | lower}}-net"
-        component_type: "{{ item.type | lower}}"
-        org_name: "{{ item.name }}"
-        services: "{{ item.services }}"
-        subject: "{{ item.subject }}"
-        ca_url: "{{ item.ca_data.url }}"
-        kubernetes: "{{ item.k8s }}"
-        vault: "{{ item.vault }}"
-        add_new_org: "false"
-      loop: "{{ network['organizations'] }}"
-      when: item.type == 'peer'
+#     # Create or get Orderer crypto materials
+#     - include_role:
+#         name: "create/crypto/orderer"
+#       vars:
+#         component_name: "{{ item.name | lower}}-net"
+#         component_type: "{{ item.type | lower}}"
+#         org_name: "{{ item.name }}"
+#         services: "{{ item.services }}"
+#         subject: "{{ item.subject }}"
+#         ca_url: "{{ item.ca_data.url }}"
+#         kubernetes: "{{ item.k8s }}"
+#         vault: "{{ item.vault }}"
+#       loop: "{{ network['organizations'] }}"
+#       when: item.type == 'orderer'
+#     
+#     # Create or get Organization crypto materials
+#     - include_role:
+#         name: "create/crypto/peer"
+#       vars:
+#         component_name: "{{ item.name | lower}}-net"
+#         component_type: "{{ item.type | lower}}"
+#         org_name: "{{ item.name }}"
+#         services: "{{ item.services }}"
+#         subject: "{{ item.subject }}"
+#         ca_url: "{{ item.ca_data.url }}"
+#         kubernetes: "{{ item.k8s }}"
+#         vault: "{{ item.vault }}"
+#         add_new_org: "false"
+#       loop: "{{ network['organizations'] }}"
+#       when: item.type == 'peer'
 
     #Creating channel artifacts
     # This role creates configtx.yaml file as the requirements mentioned in network.yaml
     # which is then consumed by configtxgen tool
-    - include_role:
-        name: "create/configtx"
-      vars:
-        config_file: "./build/configtx.yaml"
+    # - include_role:
+    #     name: "create/configtx"
+    #   vars:
+    #     config_file: "./build/configtx.yaml"
 
     # This role generate channeltx
-    - include_role:
-        name: "create/channel_artifacts"
-      vars:
-        build_path: "./build"
-        genesis: "{{ item.genesis }}"
-        channel_name: "{{ item.channel_name | lower}}"
-        profile_name: "{{ item.channel_name }}"
-        add_new_org: 'false'
-        fetch_certs: "false"
-      loop: "{{ network['channels'] }}"
-      when: item.channel_status == 'new'
+    # - include_role:
+    #     name: "create/channel_artifacts"
+    #   vars:
+    #     build_path: "./build"
+    #     genesis: "{{ item.genesis }}"
+    #     channel_name: "{{ item.channel_name | lower}}"
+    #     profile_name: "{{ item.channel_name }}"
+    #     add_new_org: 'false'
+    #     fetch_certs: "false"
+    #   loop: "{{ network['channels'] }}"
+    #   when: item.channel_status == 'new'
 
     # This role creates the value file for creating channel from one organization
     # to the vault.
+    # Use osnchannels for Fabric 2.5.x (osnadmin API), channels for 2.2.x (channeltx)
+    - include_role:
+        name: "create/osnchannels"
+      vars:
+        build_path: "./build"
+        docker_url: "{{ network.docker.url }}"
+      loop: "{{ network['channels'] }}"
+      when: item.channel_status == 'new' and '2.5.' in network.version
+    
+    # For Fabric 2.2.x and earlier, use the old channels role
     - include_role:
         name: "create/channels"
       vars:
@@ -77,7 +87,7 @@
         participants: "{{ item.participants }}"
         docker_url: "{{ network.docker.url }}"
       loop: "{{ network['channels'] }}"
-      when: item.channel_status == 'new'
+      when: item.channel_status == 'new' and ('2.2.' in network.version or '1.4.' in network.version)
 
     # This role creates the value file for joining channel from each participating peer
     # to the vault.

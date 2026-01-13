@@ -1,0 +1,146 @@
+# Example values file for deploying FireFly with Hyperledger Fabric
+# This demonstrates how to configure FireFly with the FabConnect subchart
+
+config:
+  # Enable debug and admin APIs for development
+  debugEnabled: true
+  adminEnabled: true
+
+  # Organization configuration
+  organizationName: "transporter1"
+  organizationKey: "transporter1"  # Not used for Fabric (uses fabconnectSigner instead)
+
+  # Set Fabric as the default blockchain
+  defaultBlockchainType: "fabric"
+
+  # FabConnect configuration for FireFly core
+  # When fabconnect subchart is enabled, URL will be auto-discovered
+  # Otherwise, provide external FabConnect URL
+  fabconnectUrl: ""  # Leave empty for auto-discovery from subchart
+  fabconnectChannel: "pm3"
+  fabconnectChaincode: "firefly-go"
+  fabconnectSigner: "admin"  # Fabric identity name for signing transactions (matches MSP admin credentials)
+  fabconnectRetry: true
+
+  # Database configuration (auto-configured with built-in PostgreSQL)
+  # postgresUrl: ""  # Leave empty to use built-in PostgreSQL
+  postgresAutomigrate: true
+
+  # IPFS configuration (auto-configured with built-in IPFS)
+  # ipfsApiUrl: ""  # Leave empty to use built-in IPFS
+  # ipfsGatewayUrl: ""
+
+  # Multiparty configuration
+  multipartyEnabled: true
+
+# Data exchange configuration for peer-to-peer communication
+dataexchange:
+  enabled: true
+
+  certificate:
+    enabled: true
+    issuerRef:
+      kind: ClusterIssuer
+      name: selfsigned-ca
+
+  tlsSecret:
+    enabled: false
+
+# FabConnect subchart configuration
+# Deploy FabConnect as part of the FireFly stack
+fabconnect:
+  enabled: true
+
+  # Override image tag to use latest
+  image:
+    tag: "latest"
+
+  # Fabric network connection details
+  fabric:
+    # Update these with your actual Fabric network endpoints
+    peerUrl: "grpcs://peer0.transporter1-net.pm3fraktal.se:443"
+    ordererUrl: "grpcs://orderer1.pm3org-net.pm3fraktal.se:443"
+    caUrl: "https://ca.transporter1-net.pm3fraktal.se:443"
+
+    # Organization details
+    organizationName: "transporter1-net"
+    organizationMspId: "transporter1MSP"
+
+    # Channel and chaincode
+    channelName: "pm3"
+    chaincodeName: "firefly-go"
+
+    # CA enrollment credentials
+    enrollId: "transporter1-admin"
+    enrollSecret: "transporter1-adminpw"
+
+  # MSP secret configuration
+  # Create this secret before deployment:
+  # kubectl create secret generic fabconnect-msp --from-file=path/to/msp
+  msp:
+    secretName: "fabconnect-msp"
+    mountPath: "/etc/firefly/organizations"
+
+  # Service configuration
+  service:
+    type: ClusterIP
+    port: 3000
+
+  # Resource allocation
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+  # Persistent storage for receipts and events
+  persistentVolume:
+    accessModes:
+      - ReadWriteOnce
+    size: 5Gi
+    storageClass: ""  # Use default storage class
+
+  # Health check configuration
+  healthcheck:
+    enabled: true
+    initialDelaySeconds: 15
+
+  # Logging
+  log:
+    level: "info"
+
+# Core FireFly pod configuration
+core:
+  enabled: true
+  
+  ingress:
+    enabled: true
+    className: "haproxy"
+    annotations:
+      external-dns.alpha.kubernetes.io/hostname: firefly.transporter1-net.pm3fraktal.se
+      external-dns.alpha.kubernetes.io/target: 46.62.234.169
+    hosts:
+      - host: firefly.transporter1-net.pm3fraktal.se
+    tls: []
+
+# Sandbox UI (optional)
+sandbox:
+  enabled: true
+
+# PostgreSQL is now deployed automatically by default
+# To disable: postgres.enabled: false
+postgres:
+  enabled: true
+  # Customize if needed:
+  # username: postgres
+  # password: firef1y
+  # database: firefly
+
+# IPFS is now deployed automatically by default
+# To disable: ipfs.enabled: false
+ipfs:
+  enabled: true
+  # Customize if needed:
+  # profile: server

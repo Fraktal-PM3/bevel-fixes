@@ -1,0 +1,54 @@
+##############################################################################################
+#  Copyright Accenture. All Rights Reserved.
+#
+#  SPDX-License-Identifier: Apache-2.0
+##############################################################################################
+
+##############################################################################################
+# This task copies the genesis-admin-msp-certs ConfigMap from orderer namespace to peer namespace
+# This is needed for chaincode commit operations which require access to all org admin MSPs
+##############################################################################################
+
+---
+# Set orderer namespace directly by finding org with services.orderers defined
+- name: "Set orderer namespace"
+  set_fact:
+    orderer_namespace: "{{ item.name | lower }}-net"
+  loop: "{{ network.organizations }}"
+  when: item.services.orderers is defined
+
+# Check if genesis-admin-msp-certs ConfigMap exists in peer namespace
+- name: "Check if genesis-admin-msp-certs ConfigMap exists in {{ namespace }}"
+  k8s_info:
+    kind: ConfigMap
+    namespace: "{{ namespace }}"
+    name: genesis-admin-msp-certs
+    kubeconfig: "{{ org.k8s.config_file }}"
+  register: peer_configmap_check
+
+# Get the genesis-admin-msp-certs ConfigMap from orderer namespace if it doesn't exist in peer namespace
+- name: "Get genesis-admin-msp-certs ConfigMap from {{ orderer_namespace }}"
+  k8s_info:
+    kind: ConfigMap
+    namespace: "{{ orderer_namespace }}"
+    name: genesis-admin-msp-certs
+    kubeconfig: "{{ org.k8s.config_file }}"
+  register: orderer_configmap
+  when: peer_configmap_check.resources | length == 0
+
+# Copy the ConfigMap to peer namespace
+- name: "Copy genesis-admin-msp-certs ConfigMap to {{ namespace }}"
+  k8s:
+    state: present
+    kubeconfig: "{{ org.k8s.config_file }}"
+    definition:
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: genesis-admin-msp-certs
+        namespace: "{{ namespace }}"
+      data: "{{ orderer_configmap.resources[0].data }}"
+  when: 
+    - peer_configmap_check.resources | length == 0
+    - orderer_configmap.resources is defined
+    - orderer_configmap.resources | length > 0

@@ -1913,6 +1913,14 @@
           "type": "boolean",
           "description": "Options are True and False. This denotes that the chaincode is external or not"
         },
+        "private_registry": {
+          "type": "boolean",
+          "default": false,
+          "description": "Options are True and False. This denotes that registry is private or not"
+        },
+        "registry": {
+          "$ref": "#/definitions/shared_docker"
+        },
         "tls": {
           "type": "boolean",
           "description": "Options are True and False. This enables tls check for chaincode"
@@ -1945,6 +1953,14 @@
         "version",
         "arguments"
       ],
+      "if": {
+        "properties": {
+          "private_registry": { "const": true }
+        }
+      },
+      "then": {
+        "required": ["registry"]
+      },
       "additionalProperties": false
     },
     "fabric_chaincode_repository": {

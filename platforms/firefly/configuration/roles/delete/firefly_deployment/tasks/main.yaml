@@ -1,0 +1,29 @@
+---
+##############################################################################################
+#  Copyright Accenture. All Rights Reserved.
+#
+#  SPDX-License-Identifier: Apache-2.0
+##############################################################################################
+
+# This role removes FireFly values files from the GitOps repository
+# This triggers Flux to delete the Helm releases
+
+- name: Check if FireFly HelmRelease file exists
+  stat:
+    path: "{{ values_dir }}/{{ component }}/firefly.yaml"
+  register: firefly_file
+
+- name: Remove FireFly HelmRelease file
+  file:
+    path: "{{ values_dir }}/{{ component }}/firefly.yaml"
+    state: absent
+  when: firefly_file.stat.exists
+
+# Git Push: Remove the values files from GitOps repository
+- name: Git Push - Remove FireFly values
+  include_role:
+    name: "{{ playbook_dir }}/../../shared/configuration/roles/git_push"
+  vars:
+    GIT_DIR: "{{ playbook_dir }}/../../../"
+    msg: "[ci skip] Removing FireFly deployment files for {{ component }}"
+  when: firefly_file.stat.exists

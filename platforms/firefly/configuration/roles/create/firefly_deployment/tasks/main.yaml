@@ -1,0 +1,52 @@
+---
+##############################################################################################
+#  Copyright Accenture. All Rights Reserved.
+#
+#  SPDX-License-Identifier: Apache-2.0
+##############################################################################################
+
+# This role creates Helm values for FireFly deployment
+# Each organization gets a unique FireFly instance with its own ingress URL
+
+# Create FireFly HelmRelease manifest
+- name: Create FireFly HelmRelease manifest
+  template:
+    src: "firefly-release.yaml.j2"
+    dest: "{{ values_dir }}/{{ component }}/firefly.yaml"
+
+# Git Push: Push the generated values file to GitOps repository
+- name: Git Push - FireFly values
+  include_role:
+    name: "{{ playbook_dir }}/../../shared/configuration/roles/git_push"
+  vars:
+    GIT_DIR: "{{ playbook_dir }}/../../../"
+    msg: "[ci skip] Pushing FireFly deployment files for {{ component }}"
+
+# Wait for enrollment job to complete
+# Note: The enrollment job is created automatically by the Helm chart as a post-install hook
+# when autoEnrollIdentity is configured in the firefly-fabconnect subchart values
+- name: "Waiting for enrollment job to complete in {{ component_ns }}"
+  include_role:
+    name: "{{ playbook_dir }}/../../shared/configuration/roles/check/helm_component"
+  vars:
+    component_type: "Job"
+    namespace: "{{ component_ns }}"
+    component_name: "firefly-fabconnect-enroll-identity"
+    label_selectors:
+      - app.kubernetes.io/component = identity-enrollment
+  when: firefly_config is defined and firefly_config.enabled == true
+
+# Wait for FireFly pods to be running
+- name: "Waiting for FireFly pod in {{ component_ns }}"
+  include_role:
+    name: "{{ playbook_dir }}/../../shared/configuration/roles/check/helm_component"
+  vars:
+    component_type: "Pod"
+    namespace: "{{ component_ns }}"
+    component_name: "firefly"
+    label_selectors:
+      - app.kubernetes.io/name = firefly
+
+- name: "FireFly deployment complete for {{ component }}"
+  debug:
+    msg: "FireFly has been deployed. Identity enrollment is handled by init containers."

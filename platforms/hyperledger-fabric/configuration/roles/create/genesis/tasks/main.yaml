@@ -39,9 +39,8 @@
   loop: "{{ network['organizations'] }}"
   loop_control:
     loop_var: organization
-  when: 
+  when:
     - organization.services.peers is defined and organization.services.peers | length > 0
-    - organization.name != org.name
 
 # Get channel_name
 - name: Get channel_name

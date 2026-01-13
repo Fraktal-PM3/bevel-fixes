@@ -1,0 +1,203 @@
+{{/*
+  Copyright © 2024 Kaleido, Inc.
+
+  SPDX-License-Identifier: Apache-2.0
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+  http://swww.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+*/}}
+
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "firefly-fabconnect.fullname" . }}
+  labels:
+    {{- include "firefly-fabconnect.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  serviceName: {{ include "firefly-fabconnect.fullname" . }}
+  updateStrategy:
+    type: RollingUpdate
+  selector:
+    matchLabels:
+      {{- include "firefly-fabconnect.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+        checksum/ccp: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        {{- with .Values.podAnnotations }}
+          {{- toYaml . | nindent 8 }}
+        {{- end }}
+      labels:
+        {{- include "firefly-fabconnect.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      initContainers:
+        - name: setup-msp
+          image: busybox:latest
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              set -e
+              echo "Setting up MSP directory structure..."
+
+              # Create flat MSP structure (for backward compatibility)
+              mkdir -p {{ .Values.msp.mountPath }}/msp/{admincerts,cacerts,keystore,signcerts,tlscacerts}
+
+              # Create user directory structure (required by Fabric SDK)
+              mkdir -p {{ .Values.msp.mountPath }}/msp/users/admin/msp/{admincerts,cacerts,keystore,signcerts,tlscacerts}
+
+              cd /msp-secret
+              for file in *; do
+                # Convert __ back to / in filenames
+                target=$(echo "$file" | sed 's/__/\//g')
+
+                # Copy to flat structure
+                targetdir=$(dirname "{{ .Values.msp.mountPath }}/msp/$target")
+                mkdir -p "$targetdir"
+                cp "$file" "{{ .Values.msp.mountPath }}/msp/$target"
+                echo "Copied $file -> {{ .Values.msp.mountPath }}/msp/$target"
+
+                # Copy to user directory structure for Fabric SDK
+                user_targetdir=$(dirname "{{ .Values.msp.mountPath }}/msp/users/admin/msp/$target")
+                mkdir -p "$user_targetdir"
+                cp "$file" "{{ .Values.msp.mountPath }}/msp/users/admin/msp/$target"
+                echo "Copied $file -> {{ .Values.msp.mountPath }}/msp/users/admin/msp/$target"
+              done
+
+              echo "MSP setup complete"
+              ls -laR {{ .Values.msp.mountPath }}/msp/
+          volumeMounts:
+            - name: msp-secret
+              mountPath: /msp-secret
+              readOnly: true
+            - name: msp-volume
+              mountPath: {{ .Values.msp.mountPath }}
+      {{- if .Values.initContainers }}
+        {{- tpl .Values.initContainers . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: fabconnect
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default (printf "v%s" .Chart.AppVersion) }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args:
+            - -f
+            - /fabconnect/fabconnect.yaml
+          {{- if .Values.extraEnv }}
+          env:
+            {{- toYaml .Values.extraEnv | nindent 12 }}
+          {{- end }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.service.port }}
+              protocol: TCP
+          {{- if .Values.healthcheck.enabled }}
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.healthcheck.path }}
+              port: http
+            initialDelaySeconds: {{ .Values.healthcheck.initialDelaySeconds }}
+            periodSeconds: {{ .Values.healthcheck.periodSeconds }}
+            timeoutSeconds: {{ .Values.healthcheck.timeoutSeconds }}
+            successThreshold: {{ .Values.healthcheck.successThreshold }}
+            failureThreshold: {{ .Values.healthcheck.failureThreshold }}
+          {{- end }}
+          {{- if .Values.readinessProbe.enabled }}
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.readinessProbe.path }}
+              port: http
+            initialDelaySeconds: {{ .Values.readinessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.readinessProbe.periodSeconds }}
+            timeoutSeconds: {{ .Values.readinessProbe.timeoutSeconds }}
+            successThreshold: {{ .Values.readinessProbe.successThreshold }}
+            failureThreshold: {{ .Values.readinessProbe.failureThreshold }}
+          {{- end }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - name: config
+              mountPath: /fabconnect/fabconnect.yaml
+              subPath: fabconnect.yaml
+              readOnly: true
+            - name: ccp
+              mountPath: /fabconnect/ccp.yaml
+              subPath: ccp.yaml
+              readOnly: true
+            - name: msp-volume
+              mountPath: {{ .Values.msp.mountPath }}
+            - name: fabconnect-data
+              mountPath: /fabconnect/receipts
+              subPath: receipts
+            - name: fabconnect-data
+              mountPath: /fabconnect/events
+              subPath: events
+            - name: tmp
+              mountPath: /tmp
+      {{- if .Values.extraContainers }}
+        {{- tpl .Values.extraContainers . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      volumes:
+        - name: config
+          secret:
+            secretName: "{{ include "firefly-fabconnect.fullname" . }}-config"
+        - name: ccp
+          configMap:
+            name: "{{ include "firefly-fabconnect.fullname" . }}-ccp"
+        - name: msp-secret
+          secret:
+            secretName: {{ .Values.msp.secretName }}
+        - name: msp-volume
+          emptyDir: {}
+        - name: tmp
+          emptyDir: {}
+  volumeClaimTemplates:
+    - metadata:
+        name: fabconnect-data
+      {{- with .Values.persistentVolume }}
+        {{- with .annotations }}
+        annotations:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+      spec:
+        accessModes:
+          {{- toYaml .accessModes | nindent 10 }}
+        {{- if .storageClass }}
+        storageClassName: {{ .storageClass }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .size }}
+      {{- end }}
+  {{- if .Values.extraVolumeClaimTemplates }}
+    {{- tpl .Values.extraVolumeClaimTemplates . | nindent 4 }}
+  {{- end }}

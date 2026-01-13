@@ -52,9 +52,6 @@ vault:
   #Provide the value for vault secretprefix
   #Eg. adminsecretprefix: secretsv2/data/crypto/peerOrganizations/.../users/admin
   adminsecretprefix: secretsv2/data/crypto/peerOrganizations/org1-net/users/admin
-  #Provide the value for vault secretprefix
-  #Eg. orderersecretprefix: secretsv2/data/crypto/peerOrganizations/.../orderer
-  orderersecretprefix: secretsv2/data/crypto/peerOrganizations/org1-net/orderer
   #Provide the serviceaccountname for vault
   #Eg. serviceaccountname: vault-auth
   serviceaccountname: vault-auth

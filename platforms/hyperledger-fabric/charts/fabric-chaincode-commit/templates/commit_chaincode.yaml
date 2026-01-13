@@ -56,6 +56,12 @@ spec:
       - name: package-manager
         configMap:
           name: package-manager
+      - name: orderer-cacert
+        configMap:
+          name: orderer-tls-cacert
+      - name: msps-certs
+        configMap:
+          name: genesis-admin-msp-certs
       initContainers:
       - name: certificates-init
         image: {{ $.Values.metadata.images.alpineutils }}
@@ -75,17 +81,10 @@ spec:
           value: "{{ $.Values.endorsers.name }}"
         - name: CREATOR_NS
           value: "{{ $.Values.endorsers.creator }}"
-        - name: VAULT_ORDERER_SECRET_PREFIX
-          value: "{{ $.Values.vault.orderersecretprefix }}"
+        - name: ORDERER_CA_CRT
+          value: "/orderer-tls-cacert/ca.crt"
         - name: MOUNT_PATH
           value: /secret
-        {{- range $org := $.Values.endorsers.nameslist }}
-        - name: {{ $org.name | upper | replace "-" "_" }}_ENDORSER_SECRET
-          valueFrom:
-            secretKeyRef:
-              name: {{ $org.name }}-endorser-cert
-              key: certificate
-        {{- end }}
         - name: VAULT_TYPE
           value: "{{ $.Values.vault.type }}"
         command: ["sh", "-c"]
@@ -106,17 +105,14 @@ spec:
           vaultBevelFunc "init"
           
           ###############################################################################
-          echo "Getting Orderer TLS certificates from Vault."
-          vaultBevelFunc "readJson" "${VAULT_ORDERER_SECRET_PREFIX}/tls"
-
-          TLS_CA_CERT=$(echo ${VAULT_SECRET} | jq -r '.["ca.crt"]')
-
+          echo "Getting Orderer TLS certificates from orderer-tls-cacert configmap."
+          TLS_CA_CERT=$(cat ${ORDERER_CA_CRT})
           OUTPUT_PATH="${MOUNT_PATH}/orderer/tls"
           mkdir -p ${OUTPUT_PATH}
           echo "${TLS_CA_CERT}" >> ${OUTPUT_PATH}/ca.crt
           ###############################################################################
           echo "Getting MSP certificates from Vault."
-          vaultBevelFunc "readJson" "${VAULT_PEER_SECRET_PREFIX}/msp"
+          vaultBevelFunc "readJson" "${VAULT_PEER_SECRET_PREFIX}-msp"
 
           ADMINCERT=$(echo ${VAULT_SECRET} | jq -r '.["admincerts"]')
           CACERTS=$(echo ${VAULT_SECRET} | jq -r '.["cacerts"]')
@@ -138,37 +134,25 @@ spec:
           echo "${TLSCACERTS}" >> ${OUTPUT_PATH}/tlscacerts/tlsca.crt
 
           ###############################################################################
+          CREATOR_ORG=$(echo $CREATOR_NS | cut -d'-' -f1)
           FORMAT_CERTIFICATE_PATH="/formatcertificate"
           mkdir -p ${FORMAT_CERTIFICATE_PATH}/endorsers
           for name in $ENDORSING_ORG_NAMES
             do
+
               OUTPUT_PATH="${MOUNT_PATH}/endorsers/$name/msp"
               echo $OUTPUT_PATH
               mkdir -p ${OUTPUT_PATH}/cacerts
-              var_name=$(echo "${name}_endorser_secret" | tr '[:lower:]' '[:upper:]' | tr '-' '_')
-              endorser_certificate=$(eval echo "\$$var_name")
+
+              if [ "$name" = "${CREATOR_ORG}" ]; then
+                echo "${TLSCACERTS}" > ${OUTPUT_PATH}/cacerts/ca.crt
+                continue
+              fi
+
+              # Non-creator orgs TLS certs come from the configmap
+              endorser_certificate=$(cat /msps-certs/${name}.json | jq ".data.tlscacerts" | tr -d '"')
               echo $endorser_certificate | base64 -d >> ${OUTPUT_PATH}/cacerts/ca.crt
 
-              mkdir -p ${FORMAT_CERTIFICATE_PATH}/${name}
-              formatCertificate "${OUTPUT_PATH}/cacerts/ca.crt" "${FORMAT_CERTIFICATE_PATH}/${name}"
-              CACERTS_FORMAT=$(cat ${FORMAT_CERTIFICATE_PATH}/${name}/ca.crt.txt)
-              echo "
-              {
-                \"data\": 
-                  {
-                    \"cacerts\": \"${CACERTS_FORMAT}\"
-                  }  
-              }" > payload.json
-              CREATOR_ORG=$(echo $CREATOR_NS | cut -d'-' -f1)
-              SECRETPREFIX=${SECRET_PATH}/data/${CREATOR_ORG}/peerOrganizations/${CREATOR_NS}/endorsers/${name}/users/admin
-              vault_secret_key=${SECRETPREFIX}/msp
-              
-              # This task write the CA server admin credentials to Vault
-              vaultBevelFunc 'write' "${vault_secret_key}" 'payload.json'
-              # Check CA certificates
-              vaultBevelFunc "readJson" "${vault_secret_key}"
-              echo "loop# ${VAULT_SECRET}"
-              rm payload.json
             done
         volumeMounts:
         {{ if .Values.vault.tls  }}
@@ -181,6 +165,11 @@ spec:
         - name: scripts-volume
           mountPath: /scripts/bevel-vault.sh
           subPath: bevel-vault.sh
+        - name: orderer-cacert
+          mountPath: /orderer-tls-cacert/ca.crt
+          subPath: cacert
+        - name: msps-certs
+          mountPath: /msps-certs
       containers:
       - name: commitchaincode
         image: {{ $.Values.metadata.images.fabrictools }}

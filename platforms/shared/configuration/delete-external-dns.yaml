@@ -1,0 +1,127 @@
+##############################################################################################
+#  Copyright Accenture. All Rights Reserved.
+#
+#  SPDX-License-Identifier: Apache-2.0
+##############################################################################################
+
+##################################################
+# Playbook to cleanup External DNS from the cluster
+# Playbook arguments: complete network.yaml
+##################################################
+- hosts: ansible_provisioners
+  gather_facts: no
+  no_log: "{{ no_ansible_log | default(false) }}"
+  tasks:
+  # Delete External DNS deployment and related resources
+  - name: Delete External DNS deployment
+    k8s:
+      state: absent
+      api_version: apps/v1
+      kind: Deployment
+      name: external-dns
+      namespace: kube-system
+      kubeconfig: "{{ network.organizations[0].k8s.config_file }}"
+    when:
+      - network.env.external_dns is defined
+      - network.env.external_dns == 'enabled'
+    ignore_errors: yes
+
+  # Delete External DNS ServiceAccount
+  - name: Delete External DNS ServiceAccount
+    k8s:
+      state: absent
+      api_version: v1
+      kind: ServiceAccount
+      name: external-dns
+      namespace: kube-system
+      kubeconfig: "{{ network.organizations[0].k8s.config_file }}"
+    when:
+      - network.env.external_dns is defined
+      - network.env.external_dns == 'enabled'
+    ignore_errors: yes
+
+  # Delete External DNS ClusterRole
+  - name: Delete External DNS ClusterRole
+    k8s:
+      state: absent
+      api_version: rbac.authorization.k8s.io/v1
+      kind: ClusterRole
+      name: external-dns
+      kubeconfig: "{{ network.organizations[0].k8s.config_file }}"
+    when:
+      - network.env.external_dns is defined
+      - network.env.external_dns == 'enabled'
+    ignore_errors: yes
+
+  # Delete External DNS ClusterRoleBinding
+  - name: Delete External DNS ClusterRoleBinding
+    k8s:
+      state: absent
+      api_version: rbac.authorization.k8s.io/v1
+      kind: ClusterRoleBinding
+      name: external-dns-viewer
+      kubeconfig: "{{ network.organizations[0].k8s.config_file }}"
+    when:
+      - network.env.external_dns is defined
+      - network.env.external_dns == 'enabled'
+    ignore_errors: yes
+
+  # Delete External DNS secrets (provider-specific)
+  - name: Delete Cloudflare API token secret
+    k8s:
+      state: absent
+      api_version: v1
+      kind: Secret
+      name: cloudflare-api-token
+      namespace: kube-system
+      kubeconfig: "{{ network.organizations[0].k8s.config_file }}"
+    when:
+      - network.env.external_dns is defined
+      - network.env.external_dns == 'enabled'
+      - network.env.external_dns_provider is defined
+      - network.env.external_dns_provider == 'cloudflare'
+    ignore_errors: yes
+
+  - name: Delete AWS credentials secret
+    k8s:
+      state: absent
+      api_version: v1
+      kind: Secret
+      name: external-dns-aws-credentials
+      namespace: kube-system
+      kubeconfig: "{{ network.organizations[0].k8s.config_file }}"
+    when:
+      - network.env.external_dns is defined
+      - network.env.external_dns == 'enabled'
+      - network.env.external_dns_provider is defined
+      - network.env.external_dns_provider == 'aws'
+    ignore_errors: yes
+
+  - name: Delete GCP credentials secret
+    k8s:
+      state: absent
+      api_version: v1
+      kind: Secret
+      name: external-dns-gcp-credentials
+      namespace: kube-system
+      kubeconfig: "{{ network.organizations[0].k8s.config_file }}"
+    when:
+      - network.env.external_dns is defined
+      - network.env.external_dns == 'enabled'
+      - network.env.external_dns_provider is defined
+      - network.env.external_dns_provider == 'google'
+    ignore_errors: yes
+
+  # Delete generated External DNS manifest files
+  - name: Delete External DNS manifest files
+    file:
+      path: "{{ playbook_dir }}/build/{{ item }}"
+      state: absent
+    loop:
+      - external-dns-cloudflare.yaml
+      - external-dns-aws.yaml
+      - external-dns-google.yaml
+    when:
+      - network.env.external_dns is defined
+      - network.env.external_dns == 'enabled'
+    ignore_errors: yes

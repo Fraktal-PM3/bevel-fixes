@@ -2,6 +2,7 @@
 [//]: # (Copyright Accenture. All Rights Reserved.)
 [//]: # (SPDX-License-Identifier: Apache-2.0)
 [//]: # (##############################################################################################)
+<!-- TODO: johann update the charts documentation --> 
 
 <a name = "external-chaincode-hyperledger-fabric-deployment"></a>
 # External Chaincode Hyperledger Fabric Deployment

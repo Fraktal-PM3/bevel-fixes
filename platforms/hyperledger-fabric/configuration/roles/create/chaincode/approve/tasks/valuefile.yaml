@@ -82,6 +82,7 @@
     component_chaincode: "{{ chaincode }}"
     values_dir: "{{ playbook_dir }}/../../../{{ org.gitops.release_dir }}/{{ org.name | lower }}"
     pdc_config_content: "{{ lookup('file', '{{ chaincode.pdc.collections_config }}')}}"
+    env_type: "{{ network.env.type }}"
   when:
     - chaincode is defined and approve_chaincode.resources|length == 0
 

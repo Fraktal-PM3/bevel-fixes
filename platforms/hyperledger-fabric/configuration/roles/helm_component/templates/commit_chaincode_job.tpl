@@ -22,8 +22,8 @@ spec:
       network:
         version: {{ network.version }}
       images:
-        fabrictools: {{ docker_url }}/{{ fabric_tools_image[network.version] }}
-        alpineutils: {{ docker_url }}/{{ alpine_image }}
+        fabrictools: {{ docker_url }}/{{ fabric_tools_image }}:{{ network.version }}
+        alpineutils: {{ docker_url }}/bevel-alpine:{{ bevel_alpine_version }}
 
     peer:
       name: {{ peer_name }}
@@ -35,8 +35,7 @@ spec:
       role: vault-role
       address: {{ vault.url }}
       authpath: {{ org.k8s.cluster_id | default('')}}{{ network.env.type }}{{ org.name | lower }}
-      adminsecretprefix: {{ vault.secret_path | default('secretsv2') }}/data/{{ org.name | lower }}/peerOrganizations/{{ namespace }}/users/admin
-      orderersecretprefix: {{ vault.secret_path | default('secretsv2') }}/data/{{ org.name | lower }}/peerOrganizations/{{ namespace }}/orderer
+      adminsecretprefix: {{ vault.secret_path | default('secretsv2') }}/data/{{ env_type }}{{ org.name | lower }}/users/admin
       secretpath: {{ vault.secret_path | default('secretsv2') }}
       serviceaccountname: vault-auth
       type: {{ vault.type | default("hashicorp") }}
@@ -55,7 +54,7 @@ spec:
       sequence: {{ component_chaincode.sequence | default('1') }}
       commitarguments: {{ component_chaincode.arguments | default('') | quote }}
       endorsementpolicies: {{ component_chaincode.endorsements | default('') | quote }}
-      initrequired: {{ component_chaincode.init_required }}
+      initrequired: {{ component_chaincode.init_required | default('false') }}
 {% if component_chaincode.repository is defined %}
       repository:
         hostname: "{{ component_chaincode.repository.url.split('/')[0] | lower }}"

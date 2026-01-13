@@ -23,7 +23,7 @@
       vars:
         component_name: "{{ item.name | lower }}-net"
         org_name: "{{ item.name | lower }}"
-        component_type: "{{ item.type | lower }}"
+        component_type: "{{ 'orderer' if item.services.orderers is defined else 'peer' }}"
         services: "{{ item.services }}"
         kubernetes: "{{ item.k8s }}"
       loop: "{{ network['organizations'] }}"

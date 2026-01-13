@@ -1,0 +1,209 @@
+##############################################################################################
+#  Copyright Accenture. All Rights Reserved.
+#
+#  SPDX-License-Identifier: Apache-2.0
+##############################################################################################
+
+---
+# Check if External DNS is already installed
+- name: Check if External DNS is already installed
+  k8s_info:
+    kind: Deployment
+    namespace: kube-system
+    name: external-dns
+    kubeconfig: "{{ kubeconfig_path }}"
+  register: external_dns_deployment
+
+# Display External DNS installation status
+- name: Display External DNS installation status
+  debug:
+    msg: "External DNS is {{ 'already installed' if external_dns_deployment.resources else 'not installed' }}"
+
+# Validate DNS provider configuration
+- name: Validate DNS provider is specified
+  fail:
+    msg: "DNS provider not specified in network.yaml. Please set network.env.external_dns_provider"
+  when: 
+    - network.env.external_dns is defined
+    - network.env.external_dns == 'enabled'
+    - network.env.external_dns_provider is not defined
+
+# Set DNS provider facts
+- name: Set DNS provider facts
+  set_fact:
+    dns_provider: "{{ network.env.external_dns_provider | default('cloudflare') }}"
+    dns_domain: "{{ organization.external_url_suffix | regex_replace('^[^.]+\\.', '') }}"
+  loop: "{{ network.organizations }}"
+  loop_control:
+    loop_var: organization
+  when: 
+    - network.env.external_dns is defined
+    - network.env.external_dns == 'enabled'
+    - organization.external_url_suffix is defined
+  register: dns_facts
+
+# Get unique domain (should be same for all orgs)
+- name: Set primary domain
+  set_fact:
+    primary_domain: "{{ dns_facts.results | selectattr('ansible_facts', 'defined') | map(attribute='ansible_facts.dns_domain') | first }}"
+  when:
+    - network.env.external_dns is defined
+    - network.env.external_dns == 'enabled'
+    - dns_facts.results is defined
+
+# Check for DNS provider credentials secret based on provider
+- name: Check for Cloudflare API token secret
+  k8s_info:
+    kind: Secret
+    namespace: kube-system
+    name: cloudflare-api-token
+    kubeconfig: "{{ kubeconfig_path }}"
+  register: cloudflare_secret
+  when:
+    - network.env.external_dns is defined
+    - network.env.external_dns == 'enabled'
+    - dns_provider == 'cloudflare'
+
+- name: Check for AWS credentials secret
+  k8s_info:
+    kind: Secret
+    namespace: kube-system
+    name: aws-credentials
+    kubeconfig: "{{ kubeconfig_path }}"
+  register: aws_secret
+  when:
+    - network.env.external_dns is defined
+    - network.env.external_dns == 'enabled'
+    - dns_provider == 'aws'
+
+- name: Check for GCP credentials secret
+  k8s_info:
+    kind: Secret
+    namespace: kube-system
+    name: gcp-credentials
+    kubeconfig: "{{ kubeconfig_path }}"
+  register: gcp_secret
+  when:
+    - network.env.external_dns is defined
+    - network.env.external_dns == 'enabled'
+    - dns_provider == 'google'
+
+# Fail if credentials not found
+- name: Fail if Cloudflare credentials not found
+  fail:
+    msg: |
+      Cloudflare API token secret not found. Please create it with:
+      kubectl create secret generic cloudflare-api-token \
+        --from-literal=cloudflare_api_token=<YOUR_TOKEN> \
+        -n kube-system
+  when:
+    - network.env.external_dns is defined
+    - network.env.external_dns == 'enabled'
+    - dns_provider == 'cloudflare'
+    - cloudflare_secret.resources | length == 0
+
+- name: Fail if AWS credentials not found
+  fail:
+    msg: |
+      AWS credentials secret not found. Please create it with:
+      kubectl create secret generic aws-credentials \
+        --from-literal=aws_access_key_id=<KEY> \
+        --from-literal=aws_secret_access_key=<SECRET> \
+        -n kube-system
+  when:
+    - network.env.external_dns is defined
+    - network.env.external_dns == 'enabled'
+    - dns_provider == 'aws'
+    - aws_secret.resources | length == 0
+
+- name: Fail if GCP credentials not found
+  fail:
+    msg: |
+      GCP credentials secret not found. Please create it with:
+      kubectl create secret generic gcp-credentials \
+        --from-file=credentials.json=<PATH_TO_SERVICE_ACCOUNT_JSON> \
+        -n kube-system
+  when:
+    - network.env.external_dns is defined
+    - network.env.external_dns == 'enabled'
+    - dns_provider == 'google'
+    - gcp_secret.resources | length == 0
+
+# Ensures the build directory
+- name: "Creating the build directory"
+  include_role:
+    name: "{{ playbook_dir }}/../../shared/configuration/roles/check/directory"
+  vars:
+    path: "{{ playbook_dir }}/build"
+
+# Create External DNS deployment from template
+- name: Create External DNS deployment manifest
+  template:
+    src: "external-dns-{{ dns_provider }}.yaml.j2"
+    dest: "{{ playbook_dir }}/build/external-dns-{{ dns_provider }}.yaml"
+  when:
+    - network.env.external_dns is defined
+    - network.env.external_dns == 'enabled'
+    - external_dns_deployment.resources | length == 0
+
+# Deploy External DNS
+- name: Deploy External DNS
+  k8s:
+    state: present
+    src: "{{ playbook_dir }}/build/external-dns-{{ dns_provider }}.yaml"
+    kubeconfig: "{{ kubeconfig_path }}"
+  when:
+    - network.env.external_dns is defined
+    - network.env.external_dns == 'enabled'
+    - external_dns_deployment.resources | length == 0
+
+# Wait for External DNS to be ready
+- name: Wait for External DNS deployment to be ready
+  k8s_info:
+    kind: Deployment
+    namespace: kube-system
+    name: external-dns
+    kubeconfig: "{{ kubeconfig_path }}"
+  register: external_dns_status
+  until:
+    - external_dns_status.resources | length > 0
+    - external_dns_status.resources[0].status.readyReplicas is defined
+    - external_dns_status.resources[0].status.readyReplicas > 0
+  retries: 30
+  delay: 10
+  when:
+    - network.env.external_dns is defined
+    - network.env.external_dns == 'enabled'
+
+# Display External DNS pod status
+- name: Get External DNS pod name
+  shell: |
+    KUBECONFIG={{ kubeconfig_path }} kubectl get pods -n kube-system -l app=external-dns -o jsonpath='{.items[0].metadata.name}'
+  register: external_dns_pod
+  when:
+    - network.env.external_dns is defined
+    - network.env.external_dns == 'enabled'
+
+- name: Display External DNS logs (last 20 lines)
+  shell: |
+    KUBECONFIG={{ kubeconfig_path }} kubectl logs -n kube-system {{ external_dns_pod.stdout }} --tail=20
+  register: external_dns_logs
+  when:
+    - network.env.external_dns is defined
+    - network.env.external_dns == 'enabled'
+    - external_dns_pod.stdout is defined
+
+- name: Show External DNS status
+  debug:
+    msg: |
+      External DNS Status:
+      - Provider: {{ dns_provider }}
+      - Domain: {{ primary_domain }}
+      - Pod: {{ external_dns_pod.stdout }}
+      
+      Recent logs:
+      {{ external_dns_logs.stdout }}
+  when:
+    - network.env.external_dns is defined
+    - network.env.external_dns == 'enabled'
+    - external_dns_logs.stdout is defined

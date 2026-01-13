@@ -1,0 +1,20 @@
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  labels:
+    app: fabric
+  name: fabric-alerts
+  namespace: default
+spec:
+  groups:
+  - name: fabric-chain-stalled
+    rules:
+    - alert: FabricChainStalled
+      annotations:
+        description: Fabric Chain behind more than 1 minute ({{ $value }} seconds)
+        summary: Fabric Chain behind more than 1 minute
+      expr: time() - max (fabric_blockchain_height) by (value) > 60
+      for: 1m
+      labels:
+        severity: critical

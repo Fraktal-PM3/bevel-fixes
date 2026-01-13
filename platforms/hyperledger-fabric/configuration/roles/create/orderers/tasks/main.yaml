@@ -50,6 +50,7 @@
     name: "orderer"
     org_name: "{{ org.name | lower }}"
     sc_name: "{{ org_name }}-bevel-storageclass"
+    sc_enabled: false
     component_name: "zkkafka"
     type: "zkkafka"
     consensus: "{{component_services.consensus}}"
@@ -62,6 +63,8 @@
   vars:
     name: "orderer"
     org_name: "{{ org.name | lower }}"
+    sc_name: "{{ org_name }}-bevel-storageclass"
+    sc_enabled: false
     component_name: "{{ orderer.name | lower  }}"
     type: "orderers"
     consensus: "{{component_services.consensus}}"

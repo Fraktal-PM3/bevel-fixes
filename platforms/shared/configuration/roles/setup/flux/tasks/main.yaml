@@ -36,12 +36,17 @@
     --path={{ git_path }} \
     --version=v{{ flux_version }} \
     --namespace=flux-{{ network.env.type }} \
-    --context={{ kubecontext }}
+    --context={{ kubecontext }} \
+    --timeout=2m || true
   when: git_protocol == "https"
   environment:
     KUBECONFIG: "{{ item.k8s.config_file }}"
   tags:
     - flux
+  async: 300
+  poll: 5
+  register: flux_bootstrap_result
+  changed_when: "'installed components' in flux_bootstrap_result.stderr or 'installed components' in flux_bootstrap_result.stdout"
 
 - name: Install flux cli and bootstrap flux v2
   shell: |
@@ -53,9 +58,14 @@
     --private-key-file={{ git_key }} \
     --version=v{{ flux_version }} \
     --namespace=flux-{{ network.env.type }} \
-    --context={{ kubecontext }}
+    --context={{ kubecontext }} \
+    --timeout=2m || true
   when: git_protocol == "ssh"
   environment:
     KUBECONFIG: "{{ item.k8s.config_file }}"
   tags:
     - flux
+  async: 300
+  poll: 5
+  register: flux_bootstrap_result
+  changed_when: "'installed components' in flux_bootstrap_result.stderr or 'installed components' in flux_bootstrap_result.stdout"

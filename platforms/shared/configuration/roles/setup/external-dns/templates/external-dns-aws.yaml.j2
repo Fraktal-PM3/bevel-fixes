@@ -1,0 +1,118 @@
+##############################################################################################
+#  Copyright Accenture. All Rights Reserved.
+#
+#  SPDX-License-Identifier: Apache-2.0
+##############################################################################################
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: external-dns
+  namespace: kube-system
+  labels:
+    app.kubernetes.io/name: external-dns
+    app.kubernetes.io/managed-by: bevel
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: external-dns
+  labels:
+    app.kubernetes.io/name: external-dns
+    app.kubernetes.io/managed-by: bevel
+rules:
+- apiGroups: [""]
+  resources: ["services","endpoints","pods"]
+  verbs: ["get","watch","list"]
+- apiGroups: ["extensions","networking.k8s.io"]
+  resources: ["ingresses"]
+  verbs: ["get","watch","list"]
+- apiGroups: [""]
+  resources: ["nodes"]
+  verbs: ["list","watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: external-dns-viewer
+  labels:
+    app.kubernetes.io/name: external-dns
+    app.kubernetes.io/managed-by: bevel
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: external-dns
+subjects:
+- kind: ServiceAccount
+  name: external-dns
+  namespace: kube-system
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: external-dns
+  namespace: kube-system
+  labels:
+    app.kubernetes.io/name: external-dns
+    app.kubernetes.io/managed-by: bevel
+spec:
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: external-dns
+  template:
+    metadata:
+      labels:
+        app: external-dns
+    spec:
+      serviceAccountName: external-dns
+      containers:
+      - name: external-dns
+        image: registry.k8s.io/external-dns/external-dns:v{{ network.env.external_dns_version | default('0.14.0') }}
+        args:
+        - --source=ingress
+        - --source=service
+        - --domain-filter={{ primary_domain }}
+        - --provider=aws
+        - --policy={{ network.env.external_dns_policy | default('sync') }}
+        - --registry=txt
+        - --txt-owner-id={{ network.env.external_dns_owner_id | default('bevel-fabric-network') }}
+        - --txt-prefix=external-dns-
+        - --log-level={{ network.env.external_dns_log_level | default('info') }}
+        - --interval={{ network.env.external_dns_interval | default('1m') }}
+        - --aws-zone-type={{ network.env.aws_zone_type | default('public') }}
+{% if network.env.aws_hosted_zone_id is defined %}
+        - --aws-zone-tags=Name={{ network.env.aws_hosted_zone_id }}
+{% endif %}
+        env:
+        - name: AWS_ACCESS_KEY_ID
+          valueFrom:
+            secretKeyRef:
+              name: aws-credentials
+              key: aws_access_key_id
+        - name: AWS_SECRET_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: aws-credentials
+              key: aws_secret_access_key
+{% if network.env.aws_region is defined %}
+        - name: AWS_DEFAULT_REGION
+          value: "{{ network.env.aws_region }}"
+{% endif %}
+        resources:
+          limits:
+            memory: {{ network.env.external_dns_memory_limit | default('128Mi') }}
+            cpu: {{ network.env.external_dns_cpu_limit | default('100m') }}
+          requests:
+            memory: {{ network.env.external_dns_memory_request | default('64Mi') }}
+            cpu: {{ network.env.external_dns_cpu_request | default('50m') }}
+        securityContext:
+          runAsNonRoot: true
+          runAsUser: 65534
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+            - ALL

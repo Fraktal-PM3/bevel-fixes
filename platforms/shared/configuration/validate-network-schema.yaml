@@ -21,7 +21,8 @@
         state: present        
         production: no
     - set_fact:
-        tempNetworkyaml: '{ "network": {{ network }} }'
+        tempNetworkyaml:
+          network: "{{ network }}"
     - name: "Ensures build dir exists"
       include_role:
         name: "check/directory"
@@ -30,7 +31,7 @@
     - name: "create tempNetwork yaml file"
       copy:
         content: |
-          {{ tempNetworkyaml |to_nice_yaml( width=50, explicit_start=True, explicit_end=True) }}
+          {{ tempNetworkyaml | to_nice_yaml(width=50, explicit_start=True, explicit_end=True) }}
         dest: ./build/temp.yaml             
     - name: "run schema validator on network.yaml"
       shell: |

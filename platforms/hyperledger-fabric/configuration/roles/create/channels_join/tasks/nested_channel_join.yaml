@@ -67,10 +67,15 @@
     name: "{{ playbook_dir }}/../../shared/configuration/roles/create/job_component"
   vars:
     name: "{{ participant.name }}"
-    type: "join_channel_job"    
-    component_name: "{{ channel_name }}-{{ participant.name }}-{{ peer.name }}"
-    peer_name: "{{ peer.name }}"
-    peer_type: "{{ peer.type }}"
+    type: "join_channel_job"
+    # peer is a dict with name, gossipAddress, peerAddress, and peer (null) keys
+    peer_name_lookup: "{{ peer.name }}"
+    component_name: "{{ channel_name }}-{{ participant.name }}-{{ peer_name_lookup }}"
+    peer_name: "{{ peer_name_lookup }}"
+    # Look up peer type from organization's services.peers
+    org_peer_query: "services.peers[?name=='{{ peer_name_lookup }}']"
+    org_peer: "{{ org | json_query(org_peer_query) | first }}"
+    peer_type: "{{ org_peer.type }}"
     component_ns: "{{ participant.name | lower}}-net"
     git_protocol: "{{ org.gitops.git_protocol }}"
     git_url: "{{ org.gitops.git_url }}"

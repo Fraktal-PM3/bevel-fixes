@@ -9,14 +9,15 @@
 #############################################################################################
     
 ---
-# Check if the joinchannel job is completed successfully or wait for it
-# Try for a maximum of 10 times with an interval of 30 seconds between each try
-- name: "Waiting for the job anchorpeer-{{ channel.channel_name | lower }}-{{ name }}"
+# Check if the anchor peer job is completed successfully or wait for it
+# For Fabric 2.2.x and earlier, wait for anchor peer update transactions
+# For Fabric 2.5.x, anchor peers are set in genesis block, no separate job needed
+- name: "Waiting for the job anchorpeer-{{ channel.channel_name | lower }}-{{ name }}-{{ peer.name }}"
   include_role:
     name: "{{ playbook_dir }}/../../shared/configuration/roles/check/helm_component"
   vars:
     component_type: "Job"
-    component_name: "anchorpeer-{{ channelx.channel_name | lower }}-{{ name }}"
+    component_name: "anchorpeer-{{ channelx.channel_name | lower }}-{{ name }}-{{ peer.name }}"
   loop: "{{ network.channels }}"
   loop_control:
     loop_var: channelx
@@ -24,6 +25,7 @@
     - add_new_org is not defined or add_new_org == 'false'
     - add_peer is not defined
     - participant.org_status != 'new'
+    - ('2.2.' in network.version or '1.4.' in network.version)
 
 # Create value file for chaincode installation 
 - name: "Create value file for chaincode installation"
